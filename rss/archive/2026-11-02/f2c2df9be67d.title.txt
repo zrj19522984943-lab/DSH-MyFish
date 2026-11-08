@@ -1,0 +1,1 @@
+LD-AtlasLoc: Long-distance monocular aerial image localization with geo-referenced sparse maps under GNSS-degraded and appearance-changing conditions

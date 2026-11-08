@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>大肥鱼</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!--
+    上面是她最近说的话（有话说才展开），下面是输入框和发送键。
+    没有快捷指令，没有「今天写日记」之类的引导按钮——她的人格只能从经历里长出来，
+    这个窗口只负责多一个说话的口子，并把她说出口的话放回来给你看。
+  -->
+  <section id="reply" class="reply" aria-label="大肥鱼说的话" hidden>
+    <div class="reply-head">大肥鱼</div>
+    <div id="reply-list" class="reply-list" aria-live="polite"></div>
+  </section>
+  <div class="bar" role="group" aria-label="跟大肥鱼说话">
+    <input id="text" type="text" maxlength="4000" autocomplete="off" spellcheck="false"
+           placeholder="跟大肥鱼说点什么…" aria-label="要跟她说的话">
+    <button id="send" type="button" aria-label="发送">发送</button>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>

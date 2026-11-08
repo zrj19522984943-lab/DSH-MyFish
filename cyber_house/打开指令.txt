@@ -1,0 +1,19 @@
+cd D:\demo\workspace\DSH-MyFish\cyber_house
+node api-router.js
+
+# 启动日志会直接打印局域网地址，手机打开「手机看板」那一行：
+#   [cyber-house] 局域网访问: http://192.168.1.100:8787
+#   [cyber-house] 手机看板  http://192.168.1.100:8787/home_leaflet.html
+# 默认监听 0.0.0.0；只想本机用就设 FISH_HOME_HOST=127.0.0.1。
+# 网络感知默认每 5 秒 ping 默认网关；可用 FISH_HOME_PING_HOST 换目标。
+
+# 敲门会连接本机的 DSH Web（`dsh web` 或 DSH 桌面版）。端口不固定，router 会自己发现：
+#   1. FISH_HOME_DSH_URL / DSH_WEB_URL（设置了就优先用）
+#   2. cyber_house/.dsh-web-url.json 里上次成功的地址（会自动校验）
+#   3. 自动发现（用 DSH 的 401 签名文案确认后写回缓存）：
+#      a. DSH 配置里钉死的 webServer 端口（$DSH_HOME/settings.json、
+#         $DSH_HOME/profiles/desktop 的 cordis 配置）
+#      b. 常见端口 + 本机 node/electron/DSH 宿主进程监听的端口
+#         （桌面版宿主映像名是 "DeepSeek Harness.exe"，也算 DSH 进程）
+#      c. 兜底再扫一遍其余本机监听端口，仍由 401 签名认定，不会误认
+# 如果发现失败，会返回明确的错误而不是 "fetch failed"。

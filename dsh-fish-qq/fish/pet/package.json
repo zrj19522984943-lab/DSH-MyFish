@@ -1,0 +1,8 @@
+{
+  "name": "dsh-fish-pet-window",
+  "productName": "大肥鱼",
+  "version": "0.6.0",
+  "description": "dsh-fish 的独立桌宠输入窗口：透明、置顶、无边框、可拖动，只负责多一个说话的口子。",
+  "main": "main.cjs",
+  "private": true
+}

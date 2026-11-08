@@ -1,0 +1,33 @@
+# 依赖 / 构建产物
+node_modules/
+dist/
+managehub/
+NapCat.Shell/
+
+# 日志 / 数据库 / 临时文件
+*.log
+*.sqlite
+*.sqlite-journal
+*.tmp
+__pycache__/
+.DS_Store
+Thumbs.db
+
+# 赛博小屋的运行时数据（含个人轨迹，勿入库）
+cyber_house/backups/
+cyber_house/.headless/
+cyber_house/physical_events/
+cyber_house/phone_battery.json
+cyber_house/interaction-outbox.jsonl
+cyber_house/current_space.json
+cyber_house/dreams/
+cyber_house/sensors/.rhythm/
+
+# 运行时 / 凭据
+# 节奏采集是持续追加的运行时数据；真实路径是 sensors/.rhythm/（cyber_house 下没有它）
+sensors/.rhythm/
+.dsh-fish/
+.dsh/
+CheckLogs/
+.env
+.env.local

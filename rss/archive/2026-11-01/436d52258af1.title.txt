@@ -1,0 +1,1 @@
+FLORO: A multimodal geospatial foundation model for ecological remote sensing across sensors and scales

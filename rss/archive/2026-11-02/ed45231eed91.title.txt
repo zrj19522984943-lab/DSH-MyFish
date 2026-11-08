@@ -1,0 +1,1 @@
+A multispectral reflectance field framework for radiometrically accurate three-dimensional point cloud generation of plants at close range

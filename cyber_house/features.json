@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "name": "赛博小屋·自定义要素",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::3857"
+    }
+  },
+  "updatedAt": "2026-11-08T08:02:32.750Z",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "feat-mw6ia566-rjrhf0",
+      "properties": {
+        "icon": "📦",
+        "color": "#57d8ff",
+        "interact_text": "一面从天而降的墙，没人知道她为什么在这",
+        "type": "furniture",
+        "name": "测试隔断",
+        "map_level": "cyber_house"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            586,
+            605
+          ],
+          [
+            679,
+            644
+          ],
+          [
+            646,
+            548
+          ]
+        ]
+      }
+    }
+  ]
+}

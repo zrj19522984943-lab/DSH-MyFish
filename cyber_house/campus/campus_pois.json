@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "source": "campus_whu.geojson",
+  "pois": [
+    {
+      "name": "老图书馆",
+      "kind": "building",
+      "lng": 114.3612,
+      "lat": 30.5376
+    },
+    {
+      "name": "樱顶学生宿舍",
+      "kind": "building",
+      "lng": 114.3625,
+      "lat": 30.537
+    },
+    {
+      "name": "行政楼",
+      "kind": "building",
+      "lng": 114.3598,
+      "lat": 30.5359
+    },
+    {
+      "name": "教五楼",
+      "kind": "building",
+      "lng": 114.3584,
+      "lat": 30.5342
+    },
+    {
+      "name": "图书馆",
+      "kind": "building",
+      "lng": 114.3638,
+      "lat": 30.5352
+    },
+    {
+      "name": "万林艺术博物馆",
+      "kind": "building",
+      "lng": 114.3608,
+      "lat": 30.5345
+    },
+    {
+      "name": "梅园食堂",
+      "kind": "building",
+      "lng": 114.3652,
+      "lat": 30.5334
+    },
+    {
+      "name": "学生宿舍",
+      "kind": "building",
+      "lng": 114.366,
+      "lat": 30.5362
+    },
+    {
+      "name": "珞珈山庄",
+      "kind": "building",
+      "lng": 114.3628,
+      "lat": 30.54
+    },
+    {
+      "name": "信息学部教学楼",
+      "kind": "building",
+      "lng": 114.3672,
+      "lat": 30.532
+    },
+    {
+      "name": "樱花大道",
+      "kind": "road",
+      "lng": 114.362825,
+      "lat": 30.53765
+    },
+    {
+      "name": "八一路",
+      "kind": "road",
+      "lng": 114.363125,
+      "lat": 30.53
+    },
+    {
+      "name": "珞珈山路",
+      "kind": "road",
+      "lng": 114.36125,
+      "lat": 30.5322
+    },
+    {
+      "name": "学府路",
+      "kind": "road",
+      "lng": 114.36655,
+      "lat": 30.53525
+    },
+    {
+      "name": "珞珈山",
+      "kind": "green",
+      "lng": 114.365167,
+      "lat": 30.537833
+    },
+    {
+      "name": "樱花广场",
+      "kind": "green",
+      "lng": 114.3615,
+      "lat": 30.5386
+    }
+  ]
+}

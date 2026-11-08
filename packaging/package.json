@@ -1,0 +1,9 @@
+{
+  "name": "dsh-myfish-packaging",
+  "private": true,
+  "version": "1.0.0",
+  "description": "只给 pack-release.js 用的打包依赖，不会进发布包。",
+  "devDependencies": {
+    "archiver": "^8.0.0"
+  }
+}

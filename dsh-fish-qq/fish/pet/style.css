@@ -1,0 +1,218 @@
+/* 透明窗口：body 本身必须透明，圆角与底色只画在 .bar / .reply 上。 */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* 她说的话（有话说才展开）。高度随内容，最多占满输入框以上的空间。
+   整块可拖动（窗口透明，需要一块够大的 drag 区）；
+   列表本身留作 no-drag，否则滚不动、也选不了字。 */
+.reply {
+  -webkit-app-region: drag;
+  app-region: drag;
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  max-height: 100%;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(108, 160, 255, 0.22);
+  background: linear-gradient(180deg, rgba(24, 30, 40, 0.92), rgba(13, 17, 24, 0.92));
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  cursor: move;
+}
+
+.reply[hidden] {
+  display: none;
+}
+
+.reply-head {
+  flex: 0 0 auto;
+  color: #8fa6c8;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  user-select: none;
+}
+
+.reply-list {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 170px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: #dfe7f3;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 150, 200, 0.35) transparent;
+}
+
+.reply-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reply-list::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.reply-list::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(120, 150, 200, 0.35);
+}
+
+.reply-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.msg + .msg {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(140, 170, 220, 0.12);
+}
+
+.msg.note {
+  color: #8f99a9;
+  font-style: italic;
+}
+
+.msg.pending {
+  color: #8fa6c8;
+  font-style: normal;
+}
+
+/* 空白处可拖动；输入框与按钮在下面单独恢复 no-drag。 */
+.bar {
+  -webkit-app-region: drag;
+  app-region: drag;
+  box-sizing: border-box;
+  flex: 0 0 60px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(108, 160, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(30, 37, 49, 0.94), rgba(15, 19, 27, 0.94));
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.bar.error {
+  border-color: rgba(255, 112, 112, 0.72);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.48),
+    0 0 0 3px rgba(255, 88, 88, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.bar:focus-within {
+  border-color: rgba(108, 160, 255, 0.55);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.48),
+    0 0 0 3px rgba(79, 124, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+#text {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #e9eef7;
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  caret-color: #7ea8ff;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#text::placeholder {
+  color: #7f8b9d;
+}
+
+#text::selection {
+  background: rgba(79, 124, 255, 0.35);
+}
+
+#send {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  flex: 0 0 auto;
+  min-width: 56px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  background: #3f7cff;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 140ms ease, transform 80ms ease, opacity 140ms ease;
+}
+
+#send:hover:not(:disabled) {
+  background: #5a8fff;
+}
+
+#send:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+#send:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+#send:focus-visible {
+  outline: 2px solid rgba(160, 195, 255, 0.75);
+  outline-offset: 2px;
+}

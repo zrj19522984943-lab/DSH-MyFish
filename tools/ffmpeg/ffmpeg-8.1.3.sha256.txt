@@ -1,0 +1,16 @@
+317ae620967bc363f7a62ecbea248048ccb1a5876217c18ad3fa56943b6a6264  ffmpeg-8.1.3-linux-arm64-gpl-shared.tar.xz
+56fe25914aa1dac715d4c3ef17333ed84f0a0de21cd15376a66907c2a34a647a  ffmpeg-8.1.3-linux-arm64-gpl.tar.xz
+ba93bf390482d98d4c210025635521dd28f9a2fd10658e01250276f8ca0a4372  ffmpeg-8.1.3-linux-arm64-lgpl-shared.tar.xz
+cdfcf36dc159c8173df9b970bc145d41a9092a26de0e49bc56c61ad171de1c59  ffmpeg-8.1.3-linux-arm64-lgpl.tar.xz
+a235e036dbc2956e9f3073021cde3b6bbd49e4c6ea57809435df38fe2a4bc46b  ffmpeg-8.1.3-linux-x64-gpl-shared.tar.xz
+bd82025e8306684ea75f9e7969e77fd3a602441e7c75238093b530df912fdd48  ffmpeg-8.1.3-linux-x64-gpl.tar.xz
+5ca69f63499bb3e06aaf755f44482d7bf8913c2b6f0e300471b72b9e460564d8  ffmpeg-8.1.3-linux-x64-lgpl-shared.tar.xz
+f31e025dc380fd4aa99dd4dc98eeeea631e16f0a9f3703c31e4cc02e653a5a60  ffmpeg-8.1.3-linux-x64-lgpl.tar.xz
+6c013f3c1b0e7878a5bfd2f0c80e60d17c063fe00ea3fb3501c7e36b7ad34062  ffmpeg-8.1.3-win32-arm64-gpl-shared.tar.xz
+cc1dbb9b5f570d4bc81f16e125717a2636c9631fc21b95bb5ed30e605bda9bc4  ffmpeg-8.1.3-win32-arm64-gpl.tar.xz
+c976429d001227dc24bf553163a1cc11897d71b30a7a265fb54d91a7f42855b9  ffmpeg-8.1.3-win32-arm64-lgpl-shared.tar.xz
+a6536efe2308a53bbecdf385b7b4c22f2b2629d94033ef448ee2cb4db93b4212  ffmpeg-8.1.3-win32-arm64-lgpl.tar.xz
+ac413423935e4d3799ce8daca0529142ab81c0a7b966b44b1ae8ded8fbadca30  ffmpeg-8.1.3-win32-x64-gpl-shared.tar.xz
+dad18b024a104cac9c0820031eba3d03d403bfd7374aac4338b2a06bd9bb4512  ffmpeg-8.1.3-win32-x64-gpl.tar.xz
+db297804db961ba2a17e5b9162ac1fd54e31381f145e31fa246ecb7aadb98f56  ffmpeg-8.1.3-win32-x64-lgpl-shared.tar.xz
+73422b77282a70b3012e4dc43ce6acbb220399a75039cc2bf15ce7b1ccf7993b  ffmpeg-8.1.3-win32-x64-lgpl.tar.xz

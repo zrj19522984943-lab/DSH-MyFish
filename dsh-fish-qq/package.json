@@ -1,0 +1,56 @@
+{
+  "name": "dsh-fish-qq",
+  "version": "2.0.0",
+  "private": false,
+  "description": "大肥鱼 + QQ 桥接（二合一）：养一只会自己长大、能自己刷 B 站、会写日记给你看的鱼，并让她通过 QQ（OneBot/NapCat）跟你聊天。含认主机制、不定时主动私聊与「私人时间」自主待机。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "fish",
+    "qq",
+    "cordis.patch.yml",
+    "README.md",
+    "对接文档.md",
+    "功能文档.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent",
+    "pet",
+    "qq",
+    "onebot",
+    "napcat"
+  ],
+  "license": "MIT"
+}

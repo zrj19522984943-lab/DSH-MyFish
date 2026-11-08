@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>赛博小屋 · 小鱼看板</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg: #040a11;
+      --panel: rgba(9, 21, 33, 0.86);
+      --panel-solid: #091521;
+      --line: rgba(125, 181, 211, 0.15);
+      --line-strong: rgba(125, 181, 211, 0.26);
+      --text: #eaf7ff;
+      --muted: #7e99ab;
+      --muted-strong: #a9c1d1;
+      --cyan: #57d8ff;
+      --green: #4be0a5;
+      --danger: #ff8097;
+      --radius: 18px;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100dvh;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(900px 620px at 82% -8%, rgba(39, 126, 168, 0.16), transparent 62%),
+        radial-gradient(760px 520px at 8% 108%, rgba(42, 166, 128, 0.11), transparent 60%),
+        var(--bg);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.33;
+      background-image:
+        linear-gradient(rgba(125, 181, 211, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125, 181, 211, 0.045) 1px, transparent 1px);
+      background-size: 52px 52px;
+      mask-image: radial-gradient(ellipse at 50% 20%, black 0%, transparent 76%);
+    }
+
+    .app {
+      width: min(1500px, 100%);
+      height: 100dvh;
+      margin: 0 auto;
+      padding: clamp(12px, 1.6vw, 22px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .topbar {
+      flex: 0 0 auto;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(87, 216, 255, 0.24);
+      border-radius: 13px;
+      background: linear-gradient(145deg, rgba(87, 216, 255, 0.16), rgba(87, 216, 255, 0.03));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 8px 24px rgba(0, 0, 0, 0.22);
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(17px, 2vw, 21px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+    }
+
+    .conn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: rgba(8, 18, 28, 0.68);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7f93a1;
+      box-shadow: 0 0 0 4px rgba(127, 147, 161, 0.09);
+      transition: background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .conn.is-live .conn-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(75, 224, 165, 0.12), 0 0 13px rgba(75, 224, 165, 0.75);
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+
+    .conn.is-error {
+      border-color: rgba(255, 128, 151, 0.24);
+      color: #ffb0bf;
+    }
+
+    .conn.is-error .conn-dot {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 128, 151, 0.1);
+    }
+
+    .health-strip {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: clamp(12px, 2vw, 26px);
+      min-height: 38px;
+      padding: 8px 14px;
+      border: 1px solid rgba(125, 181, 211, 0.13);
+      border-radius: 12px;
+      background:
+        linear-gradient(90deg, rgba(16, 42, 59, 0.54), rgba(7, 18, 29, 0.58) 55%, rgba(16, 42, 59, 0.42));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+      font-family: var(--mono);
+    }
+
+    .health-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .health-label {
+      flex: 0 0 auto;
+      color: rgba(126, 153, 171, 0.76);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+    }
+
+    .health-track {
+      position: relative;
+      width: clamp(54px, 7vw, 94px);
+      height: 6px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border: 1px solid rgba(125, 181, 211, 0.12);
+      border-radius: 99px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          rgba(125, 181, 211, 0.06) 0,
+          rgba(125, 181, 211, 0.06) 8px,
+          rgba(4, 10, 17, 0.9) 8px,
+          rgba(4, 10, 17, 0.9) 9px
+        );
+    }
+
+    .health-track i {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2bc7ef, #63e6c0);
+      box-shadow: 0 0 10px rgba(87, 216, 255, 0.75);
+      transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1), background 240ms ease;
+    }
+
+    .health-item.is-warn .health-track i {
+      background: linear-gradient(90deg, #f2b64d, #ffd37a);
+      box-shadow: 0 0 10px rgba(245, 196, 81, 0.7);
+    }
+
+    .health-item.is-high .health-track i {
+      background: linear-gradient(90deg, #ff7894, #ffb07a);
+      box-shadow: 0 0 12px rgba(255, 118, 148, 0.8);
+    }
+
+    .health-item.is-unknown .health-track i {
+      background: rgba(126, 153, 171, 0.3);
+      box-shadow: none;
+    }
+
+    .health-item strong,
+    .weather-item strong {
+      overflow: hidden;
+      max-width: 110px;
+      color: var(--muted-strong);
+      font-size: 10px;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .weather-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      margin-left: auto;
+      color: #b7d8e7;
+    }
+
+    .weather-icon {
+      flex: 0 0 auto;
+      color: #79d7f6;
+      font-size: 13px;
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(87, 216, 255, 0.65);
+    }
+
+    .sensor-time {
+      flex: 0 0 auto;
+      color: rgba(126, 153, 171, 0.58);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .layout {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(290px, 1.16fr) minmax(224px, 0.84fr);
+      gap: 14px;
+    }
+
+    .stage-card,
+    .panel {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      backdrop-filter: blur(14px);
+    }
+
+    .stage-card {
+      isolation: isolate;
+      background:
+        radial-gradient(80% 100% at 50% 0%, rgba(26, 87, 119, 0.23), transparent 64%),
+        linear-gradient(180deg, rgba(8, 21, 34, 0.94), rgba(5, 13, 22, 0.9));
+    }
+
+    .stage-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.45;
+      background-image: radial-gradient(rgba(144, 205, 235, 0.18) 0.7px, transparent 0.7px);
+      background-size: 18px 18px;
+      mask-image: linear-gradient(to bottom, black, transparent 72%);
+    }
+
+    #world {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .stage-tag,
+    .coord {
+      position: absolute;
+      z-index: 2;
+      bottom: 12px;
+      padding: 6px 9px;
+      border: 1px solid rgba(125, 181, 211, 0.16);
+      border-radius: 8px;
+      color: rgba(183, 211, 227, 0.72);
+      background: rgba(4, 12, 20, 0.72);
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+
+    .stage-tag {
+      left: 12px;
+    }
+
+    .coord {
+      right: 12px;
+    }
+
+    .offline {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      max-width: calc(100% - 190px);
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 128, 151, 0.22);
+      border-radius: 9px;
+      color: #ffc0cb;
+      background: rgba(38, 10, 18, 0.86);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .offline[hidden] {
+      display: none;
+    }
+
+    .stage-tag[hidden] {
+      display: none;
+    }
+
+    .knock-bar {
+      position: relative;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 7px 8px 7px 16px;
+      overflow: hidden;
+      border: 1px solid rgba(87, 216, 255, 0.18);
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, rgba(12, 32, 46, 0.82), rgba(7, 18, 29, 0.9) 58%, rgba(12, 32, 46, 0.72));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .knock-bar::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: linear-gradient(180deg, #57d8ff, #47d7a0);
+      box-shadow: 0 0 18px rgba(87, 216, 255, 0.72);
+    }
+
+    .knock-prompt {
+      flex: 0 0 auto;
+      color: rgba(126, 153, 171, 0.7);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+    }
+
+    .knock-input {
+      min-width: 0;
+      flex: 1 1 auto;
+      height: 32px;
+      padding: 0 4px;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+
+    .knock-input::placeholder {
+      color: rgba(126, 153, 171, 0.58);
+    }
+
+    .knock-button {
+      position: relative;
+      z-index: 2;
+      flex: 0 0 auto;
+      height: 34px;
+      padding: 0 19px;
+      border: 1px solid rgba(87, 216, 255, 0.42);
+      border-radius: 9px;
+      color: #e9fbff;
+      background:
+        linear-gradient(180deg, rgba(48, 183, 222, 0.42), rgba(20, 101, 132, 0.38));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 20px rgba(87, 216, 255, 0.12);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      cursor: pointer;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+    }
+
+    .knock-button:hover {
+      border-color: rgba(87, 216, 255, 0.78);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 26px rgba(87, 216, 255, 0.25);
+    }
+
+    .knock-button:active {
+      transform: translateY(1px);
+    }
+
+    .knock-button:disabled {
+      cursor: wait;
+      opacity: 0.55;
+    }
+
+    .knock-status {
+      flex: 0 0 auto;
+      max-width: 150px;
+      overflow: hidden;
+      color: rgba(126, 153, 171, 0.7);
+      font-family: var(--mono);
+      font-size: 9px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .knock-status.is-ok {
+      color: var(--green);
+    }
+
+    .knock-status.is-error {
+      color: #ff9bae;
+    }
+
+    .ripple-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .water-ripple {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 1px solid rgba(87, 216, 255, 0.82);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0.2);
+      opacity: 0.95;
+      animation: water-ripple 900ms cubic-bezier(0.16, 0.7, 0.25, 1) forwards;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-columns: minmax(255px, 0.78fr) minmax(310px, 1.22fr);
+    }
+
+    .readout {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(18px, 2.6vw, 30px);
+      border-right: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+    }
+
+    .room-row {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-top: 9px;
+      min-width: 0;
+    }
+
+    .room-row h2 {
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      font-size: clamp(34px, 4.2vw, 52px);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: 0.02em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-shadow: 0 0 34px var(--accent-glow, rgba(87, 216, 255, 0.18));
+    }
+
+    .fish-badge {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.035);
+      font-size: 23px;
+      animation: bob 3.2s ease-in-out infinite;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      margin-top: 12px;
+      color: var(--muted-strong);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .status-label {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.09em;
+    }
+
+    #status {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(125, 181, 211, 0.1);
+    }
+
+    .meta-grid > div {
+      min-width: 0;
+    }
+
+    .meta-grid span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .meta-grid strong {
+      display: block;
+      overflow: hidden;
+      margin-top: 5px;
+      color: var(--muted-strong);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta-grid .token-value {
+      color: #a7e8ff;
+    }
+
+    .updated {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 13px;
+      color: rgba(126, 153, 171, 0.7);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .updated .source {
+      overflow: hidden;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chart-card {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(15px, 2vw, 23px) clamp(16px, 2.2vw, 27px);
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+
+    .chart-head h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    .chart-head span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .chart-box {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 154px;
+      margin-top: 3px;
+    }
+
+    #chart {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-center {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      left: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      text-align: center;
+    }
+
+    .chart-center strong {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: clamp(18px, 2.2vw, 27px);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+    }
+
+    .chart-center span {
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+    }
+
+    .fallback-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: min(54%, 178px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: conic-gradient(rgba(121, 160, 185, 0.13) 0 100%);
+      -webkit-mask: radial-gradient(circle, transparent 0 57%, black 58%);
+      mask: radial-gradient(circle, transparent 0 57%, black 58%);
+    }
+
+    .fallback-ring[hidden] {
+      display: none;
+    }
+
+    .fallback-note {
+      position: absolute;
+      right: 0;
+      bottom: 1px;
+      color: rgba(126, 153, 171, 0.68);
+      font-family: var(--mono);
+      font-size: 9px;
+    }
+
+    .fallback-note[hidden] {
+      display: none;
+    }
+
+    @keyframes breathe {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.48;
+      }
+    }
+
+    @keyframes bob {
+      0%,
+      100% {
+        transform: translateY(0) rotate(-3deg);
+      }
+      50% {
+        transform: translateY(-3px) rotate(3deg);
+      }
+    }
+
+    @keyframes water-ripple {
+      0% {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(0.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(8);
+      }
+    }
+
+    @media (max-width: 820px), (max-height: 620px) {
+      .app {
+        height: auto;
+        min-height: 100dvh;
+      }
+
+      .layout {
+        flex: 0 0 auto;
+        grid-template-rows: minmax(320px, 54vh) auto;
+      }
+
+      .panel {
+        grid-template-columns: 1fr;
+      }
+
+      .readout {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .chart-box {
+        min-height: 220px;
+      }
+
+      .room-row h2 {
+        font-size: clamp(32px, 9vw, 46px);
+      }
+
+      .health-strip {
+        flex-wrap: wrap;
+        gap: 9px 15px;
+      }
+
+      .weather-item {
+        margin-left: 0;
+      }
+
+      .sensor-time {
+        width: 100%;
+        text-align: right;
+      }
+
+      .knock-prompt {
+        display: none;
+      }
+
+      .knock-status {
+        max-width: 84px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .brand p,
+      .stage-tag {
+        display: none;
+      }
+
+      .conn {
+        padding: 7px 9px;
+        font-size: 9px;
+      }
+
+      .offline {
+        max-width: calc(100% - 24px);
+      }
+
+      .chart-head span {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .conn.is-live .conn-dot,
+      .fish-badge {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">🐟</div>
+        <div>
+          <h1>赛博小屋</h1>
+          <p>FISH HOME / 1000 × 1000</p>
+        </div>
+      </div>
+      <div class="conn is-wait" id="conn" role="status" aria-live="polite">
+        <span class="conn-dot" aria-hidden="true"></span>
+        <span id="conn-text">连接中</span>
+      </div>
+    </header>
+
+    <div class="health-strip" aria-label="环境传感器">
+      <div class="health-item is-unknown" id="memory-item">
+        <span class="health-label">MEM</span>
+        <div class="health-track"><i id="memory-bar"></i></div>
+        <strong id="memory-text">—</strong>
+      </div>
+      <div class="health-item is-unknown" id="chassis-item">
+        <span class="health-label">LOAD</span>
+        <div class="health-track"><i id="chassis-bar"></i></div>
+        <strong id="chassis-text">—</strong>
+      </div>
+      <div class="weather-item">
+        <span class="health-label">WX</span>
+        <span class="weather-icon" aria-hidden="true">◌</span>
+        <strong id="weather-text">—</strong>
+      </div>
+      <div class="sensor-time" id="sensor-time">传感器 —</div>
+    </div>
+
+    <main class="layout">
+      <section class="stage-card" aria-label="赛博小屋地图">
+        <canvas id="world" role="img" aria-label="赛博小屋地图，正在等待小鱼的位置"></canvas>
+        <div class="stage-tag">CANVAS / 6 ROOMS</div>
+        <div class="coord" id="coords">x — · y —</div>
+        <div class="stage-tag" id="phone-battery" style="left:auto;right:12px;bottom:42px;" hidden>🔋 手机 —</div>
+        <div class="offline" id="offline">正在寻找小屋信号…</div>
+      </section>
+
+      <section class="panel">
+        <div class="readout">
+          <div class="eyebrow">当前房间</div>
+          <div class="room-row">
+            <h2 id="room">—</h2>
+            <span class="fish-badge" aria-hidden="true">🐟</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">STATUS</span>
+            <span id="status">等待接口…</span>
+          </div>
+
+          <div class="meta-grid">
+            <div>
+              <span>今日停留</span>
+              <strong id="total">0分钟</strong>
+            </div>
+            <div>
+              <span>今日对话</span>
+              <strong id="turns">— 轮</strong>
+            </div>
+            <div>
+              <span>今日 Token</span>
+              <strong class="token-value" id="tokens">—</strong>
+            </div>
+          </div>
+          <div class="updated">
+            <span id="updated">等待第一次同步</span>
+            <span class="source" id="source">—</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>今日停留</h3>
+            <span>BY ROOM / SEC</span>
+          </div>
+          <div class="chart-box">
+            <div id="chart" aria-label="今日各房间停留时间环形图"></div>
+            <div class="fallback-ring" id="fallback-ring" hidden></div>
+            <div class="chart-center">
+              <strong id="chart-total">0分钟</strong>
+              <span>今日停留</span>
+            </div>
+            <span class="fallback-note" id="fallback-note" hidden>ECharts CDN 未加载，使用备用环形图</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="knock-bar" aria-label="跨屏敲门">
+      <span class="knock-prompt">KNOCK / 敲门</span>
+      <input
+        class="knock-input"
+        id="knock-input"
+        type="text"
+        maxlength="500"
+        autocomplete="off"
+        placeholder="在门口喊一声…"
+        aria-label="给小鱼的话"
+      >
+      <span class="knock-status" id="knock-status" role="status" aria-live="polite"></span>
+      <button class="knock-button" id="knock-button" type="button">敲门</button>
+      <div class="ripple-layer" id="ripple-layer" aria-hidden="true"></div>
+    </section>
+  </div>
+
+  <noscript>这个看板需要启用 JavaScript。</noscript>
+
+  <script>
+    (() => {
+      'use strict'
+
+      // 与 state-engine.js 的 ROOMS 保持同一套世界坐标。
+      const WORLD = 1000
+      const ROOMS = [
+        { name: '卧室', x: 55, y: 50, w: 285, h: 260, color: '#9b8cff' },
+        { name: '书房', x: 400, y: 40, w: 220, h: 370, color: '#4cc9f0' },
+        { name: '影音角', x: 680, y: 70, w: 265, h: 230, color: '#ff7694' },
+        { name: '厨房', x: 55, y: 440, w: 245, h: 420, color: '#f5c451' },
+        { name: '客厅', x: 350, y: 500, w: 365, h: 380, color: '#47d7a0' },
+        { name: '阳台', x: 765, y: 440, w: 180, h: 420, color: '#b8e35d' }
+      ]
+      const ROOM_BY_NAME = Object.fromEntries(ROOMS.map((room) => [room.name, room]))
+
+      const params = new URLSearchParams(window.location.search)
+      const apiOverride = (params.get('api') || '').replace(/\/+$/, '')
+      // 同源页面一律用 window.location.origin，手机从局域网 IP 打开时
+      // 所有请求自动跟着走；只有 file:// 直接双击时才退回本机。
+      const API_BASE = apiOverride || (window.location.protocol === 'file:' ? 'http://127.0.0.1:8787' : window.location.origin)
+      const API_URL = API_BASE + '/api/fish-home/state'
+      const KNOCK_URL = API_BASE + '/api/fish-home/knock'
+      const BATTERY_URL = API_BASE + '/api/fish-home/hardware/battery'
+      const POLL_MS = 2000
+      const MAX_KNOCK_CHARS = 500
+
+      const canvas = document.getElementById('world')
+      const ctx = canvas.getContext('2d')
+      const roomEl = document.getElementById('room')
+      const statusEl = document.getElementById('status')
+      const totalEl = document.getElementById('total')
+      const turnsEl = document.getElementById('turns')
+      const tokensEl = document.getElementById('tokens')
+      const chartTotalEl = document.getElementById('chart-total')
+      const sourceEl = document.getElementById('source')
+      const updatedEl = document.getElementById('updated')
+      const coordsEl = document.getElementById('coords')
+      const phoneBatteryEl = document.getElementById('phone-battery')
+      const connEl = document.getElementById('conn')
+      const connTextEl = document.getElementById('conn-text')
+      const offlineEl = document.getElementById('offline')
+      const fallbackRing = document.getElementById('fallback-ring')
+      const fallbackNote = document.getElementById('fallback-note')
+      const chartDom = document.getElementById('chart')
+      const memoryItem = document.getElementById('memory-item')
+      const memoryBar = document.getElementById('memory-bar')
+      const memoryText = document.getElementById('memory-text')
+      const chassisItem = document.getElementById('chassis-item')
+      const chassisBar = document.getElementById('chassis-bar')
+      const chassisText = document.getElementById('chassis-text')
+      const weatherText = document.getElementById('weather-text')
+      const sensorTime = document.getElementById('sensor-time')
+      const knockBar = document.querySelector('.knock-bar')
+      const knockInput = document.getElementById('knock-input')
+      const knockButton = document.getElementById('knock-button')
+      const knockStatus = document.getElementById('knock-status')
+      const rippleLayer = document.getElementById('ripple-layer')
+
+      sourceEl.textContent = API_BASE
+        ? API_BASE.replace(/^https?:\/\//, '')
+        : (window.location.host || '同源接口')
+
+      const view = { width: 0, height: 0, dpr: 1, scale: 0, offsetX: 0, offsetY: 0 }
+      const motion = {
+        x: WORLD / 2,
+        y: WORLD / 2,
+        targetX: WORLD / 2,
+        targetY: WORLD / 2,
+        room: '',
+        lastFrame: 0
+      }
+
+      let current = null
+      let chart = null
+      let chartBroken = false
+      let fetching = false
+      let lastUpdated = null
+      let knockPulseAt = 0
+
+      function roundedRect(context, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2)
+        context.beginPath()
+        context.moveTo(x + r, y)
+        context.arcTo(x + width, y, x + width, y + height, r)
+        context.arcTo(x + width, y + height, x, y + height, r)
+        context.arcTo(x, y + height, x, y, r)
+        context.arcTo(x, y, x + width, y, r)
+        context.closePath()
+      }
+
+      function drawFurniture(room) {
+        const roomFurniture = current?.furniture?.rooms?.[room.name]
+        const items = roomFurniture && Array.isArray(roomFurniture.items) ? roomFurniture.items : []
+        if (items.length === 0) return
+
+        for (const item of items) {
+          const width = Math.max(28, Number(item.w) || 58)
+          const height = Math.max(22, Number(item.h) || 48)
+          const localX = Number(item.x)
+          const localY = Number(item.y)
+          if (!Number.isFinite(localX) || !Number.isFinite(localY)) continue
+
+          const cx = room.x + Math.max(width / 2, Math.min(room.w - width / 2, localX))
+          const cy = room.y + Math.max(height / 2, Math.min(room.h - height / 2, localY))
+
+          ctx.save()
+          roundedRect(ctx, cx - width / 2, cy - height / 2, width, height, Math.min(14, width / 4))
+          ctx.globalAlpha = 0.13
+          ctx.fillStyle = room.color
+          ctx.fill()
+          ctx.globalAlpha = 0.38
+          ctx.strokeStyle = room.color
+          ctx.lineWidth = 1.2
+          ctx.stroke()
+          ctx.globalAlpha = 1
+
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.font = '34px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif'
+          ctx.shadowColor = hexToRgba(room.color, 0.55)
+          ctx.shadowBlur = 12
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(String(item.icon || '📦'), cx, cy + 1)
+          ctx.restore()
+        }
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect()
+        const cssWidth = Math.max(1, rect.width)
+        const cssHeight = Math.max(1, rect.height)
+        const dpr = Math.min(window.devicePixelRatio || 1, 2)
+
+        if (
+          canvas.width !== Math.round(cssWidth * dpr) ||
+          canvas.height !== Math.round(cssHeight * dpr)
+        ) {
+          canvas.width = Math.round(cssWidth * dpr)
+          canvas.height = Math.round(cssHeight * dpr)
+        }
+
+        const scale = Math.min(cssWidth / WORLD, cssHeight / WORLD)
+        view.width = cssWidth
+        view.height = cssHeight
+        view.dpr = dpr
+        view.scale = scale
+        view.offsetX = (cssWidth - WORLD * scale) / 2
+        view.offsetY = (cssHeight - WORLD * scale) / 2
+      }
+
+      function drawMap(now) {
+        resizeCanvas()
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        const { dpr, scale, offsetX, offsetY } = view
+        ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY)
+
+        // 世界边框
+        roundedRect(ctx, 0, 0, WORLD, WORLD, 24)
+        ctx.fillStyle = 'rgba(7, 18, 30, 0.66)'
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(125, 181, 211, 0.18)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.save()
+        roundedRect(ctx, 1, 1, WORLD - 2, WORLD - 2, 23)
+        ctx.clip()
+
+        // 世界里的细网格
+        ctx.lineWidth = 1
+        ctx.strokeStyle = 'rgba(125, 181, 211, 0.055)'
+        ctx.beginPath()
+        for (let i = 50; i < WORLD; i += 50) {
+          ctx.moveTo(i, 0)
+          ctx.lineTo(i, WORLD)
+          ctx.moveTo(0, i)
+          ctx.lineTo(WORLD, i)
+        }
+        ctx.stroke()
+
+        // 6 个房间
+        for (const room of ROOMS) {
+          const active = current && current.room === room.name
+          const cx = room.x + room.w / 2
+          const cy = room.y + room.h / 2
+
+          ctx.save()
+          roundedRect(ctx, room.x, room.y, room.w, room.h, 18)
+          ctx.globalAlpha = active ? 0.19 : 0.075
+          ctx.fillStyle = room.color
+          ctx.fill()
+
+          ctx.globalAlpha = 1
+          ctx.strokeStyle = active ? room.color : 'rgba(125, 181, 211, 0.2)'
+          ctx.lineWidth = active ? 3 : 1.6
+          if (active) {
+            ctx.shadowColor = room.color
+            ctx.shadowBlur = 22
+          }
+          ctx.stroke()
+          ctx.restore()
+
+          // 家具贴在房间底色之上、房间名之下，家具再大也不会盖住房名。
+          drawFurniture(room)
+
+          ctx.save()
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.font = '600 27px "Microsoft YaHei", "PingFang SC", sans-serif'
+          ctx.fillStyle = active ? 'rgba(236, 250, 255, 0.94)' : 'rgba(190, 216, 231, 0.58)'
+          ctx.fillText(room.name, cx, cy)
+          ctx.font = '500 12px "Cascadia Code", Consolas, monospace'
+          ctx.fillStyle = active ? 'rgba(236, 250, 255, 0.55)' : 'rgba(150, 185, 205, 0.33)'
+          ctx.fillText('ROOM ' + String(ROOMS.indexOf(room) + 1).padStart(2, '0'), cx, cy + 29)
+          ctx.restore()
+        }
+
+        // 游动轨迹的光晕
+        const distance = Math.hypot(motion.targetX - motion.x, motion.targetY - motion.y)
+        const moving = distance > 1.5
+        const pulse = 1 + Math.sin(now / 420) * 0.08
+
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(motion.x, motion.y, (moving ? 31 : 35) * pulse, 0, Math.PI * 2)
+        ctx.strokeStyle = moving ? 'rgba(87, 216, 255, 0.34)' : 'rgba(87, 216, 255, 0.18)'
+        ctx.lineWidth = moving ? 2 : 1.3
+        ctx.stroke()
+
+        if (moving) {
+          ctx.beginPath()
+          ctx.arc(motion.x, motion.y, 48, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(87, 216, 255, 0.1)'
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.font = '52px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif'
+        ctx.shadowColor = 'rgba(87, 216, 255, 0.8)'
+        ctx.shadowBlur = 24
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText('🐟', motion.x, motion.y + (moving ? Math.sin(now / 150) * 2 : 0))
+        ctx.restore()
+
+        // 敲门后在小鱼脚下游开三圈水波。
+        if (knockPulseAt) {
+          const age = (now - knockPulseAt) / 1000
+          if (age >= 0 && age < 1.6) {
+            ctx.save()
+            ctx.lineWidth = 1.4
+            for (let i = 0; i < 3; i += 1) {
+              const radius = 28 + age * 112 + i * 17
+              const alpha = Math.max(0, 0.42 * (1 - age / 1.6) - i * 0.06)
+              ctx.beginPath()
+              ctx.arc(motion.x, motion.y, radius, 0, Math.PI * 2)
+              ctx.strokeStyle = `rgba(87, 216, 255, ${alpha.toFixed(3)})`
+              ctx.stroke()
+            }
+            ctx.restore()
+          } else if (age >= 1.6) {
+            knockPulseAt = 0
+          }
+        }
+
+        ctx.restore()
+      }
+
+      function frame(now) {
+        const previous = motion.lastFrame || now
+        const dt = Math.min(100, Math.max(0, now - previous))
+        motion.lastFrame = now
+
+        // 与帧率无关的 Lerp：接口 2 秒才更新一次，小鱼也不会瞬移。
+        const ease = 1 - Math.exp(-dt / 290)
+        motion.x += (motion.targetX - motion.x) * ease
+        motion.y += (motion.targetY - motion.y) * ease
+
+        drawMap(now)
+        window.requestAnimationFrame(frame)
+      }
+
+      function formatDuration(seconds) {
+        const totalMinutes = Math.max(0, Math.round((Number(seconds) || 0) / 60))
+        if (totalMinutes < 60) return totalMinutes + '分钟'
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        return hours + '小时' + minutes + '分钟'
+      }
+
+      function setChartDuration(seconds) {
+        const text = formatDuration(seconds)
+        const hourIndex = text.indexOf('小时')
+        // 圆环内径不大：超过一小时后拆成两行，避免数字挤出环外。
+        chartTotalEl.innerHTML = hourIndex >= 0
+          ? text.slice(0, hourIndex + 2) + '<br>' + text.slice(hourIndex + 2)
+          : text
+      }
+
+      function formatClock(date) {
+        return date.toLocaleTimeString('zh-CN', { hour12: false })
+      }
+
+      function formatToken(value) {
+        const number = Math.max(0, Number(value) || 0)
+        if (number >= 1e9) return (number / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'
+        if (number >= 1e6) return (number / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'
+        if (number >= 1e3) return (number / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'
+        return String(Math.round(number))
+      }
+
+      function setHealth(health) {
+        const memory = health && health.memoryPercent
+        const chassisPercent = health && health.chassisPercent
+        const memoryValue = memory == null ? null : Math.max(0, Math.min(100, Number(memory)))
+        const chassisValue = chassisPercent == null ? 0 : Math.max(0, Math.min(100, Number(chassisPercent)))
+
+        memoryItem.className = 'health-item is-' + ((health && health.memoryLevel) || 'unknown')
+        chassisItem.className = 'health-item is-' + ((health && health.chassisLevel) || 'unknown')
+        memoryBar.style.width = (Number.isFinite(memoryValue) ? memoryValue : 0) + '%'
+        chassisBar.style.width = (Number.isFinite(chassisValue) ? chassisValue : 0) + '%'
+        memoryText.textContent = Number.isFinite(memoryValue) ? memoryValue + '%' : '—'
+        chassisText.textContent = (health && health.chassisStatus) || '—'
+        weatherText.textContent = (health && health.weather) || '—'
+
+        const updatedAt = health && health.updatedAt ? new Date(health.updatedAt) : null
+        sensorTime.textContent = updatedAt && !Number.isNaN(updatedAt.getTime())
+          ? '传感器 ' + formatClock(updatedAt)
+          : '传感器 —'
+      }
+
+      function setKnockStatus(text, tone) {
+        knockStatus.textContent = text
+        knockStatus.classList.toggle('is-ok', tone === 'ok')
+        knockStatus.classList.toggle('is-error', tone === 'error')
+      }
+
+      function spawnRipples(clientX, clientY) {
+        const rect = knockBar.getBoundingClientRect()
+        const x = Number.isFinite(clientX) ? clientX - rect.left : rect.width - 78
+        const y = Number.isFinite(clientY) ? clientY - rect.top : rect.height / 2
+
+        for (let i = 0; i < 3; i += 1) {
+          const ripple = document.createElement('span')
+          ripple.className = 'water-ripple'
+          ripple.style.left = x + 'px'
+          ripple.style.top = y + 'px'
+          ripple.style.animationDelay = i * 95 + 'ms'
+          rippleLayer.appendChild(ripple)
+          window.setTimeout(() => ripple.remove(), 1300 + i * 95)
+        }
+
+        knockPulseAt = performance.now()
+      }
+
+      async function sendKnock(event) {
+        const message = knockInput.value.trim()
+        if (!message) {
+          setKnockStatus('先写一句话', 'error')
+          knockInput.focus()
+          return
+        }
+        if ([...message].length > MAX_KNOCK_CHARS) {
+          setKnockStatus('最多 ' + MAX_KNOCK_CHARS + ' 个字', 'error')
+          return
+        }
+        if (knockButton.disabled) return
+
+        spawnRipples(event && event.clientX, event && event.clientY)
+        knockButton.disabled = true
+        setKnockStatus('正在敲门…', '')
+
+        try {
+          const response = await fetch(KNOCK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            },
+            body: JSON.stringify({ message })
+          })
+          const text = await response.text()
+          let payload = null
+          try {
+            payload = JSON.parse(text)
+          } catch {
+            // 下面统一按状态码报错。
+          }
+          if (!response.ok || !payload || payload.ok !== true) {
+            throw new Error((payload && payload.error) || ('HTTP ' + response.status))
+          }
+
+          knockInput.value = ''
+          setKnockStatus('敲门声送到了', 'ok')
+          window.setTimeout(refresh, 350)
+          window.setTimeout(() => {
+            if (knockStatus.textContent === '敲门声送到了') setKnockStatus('', '')
+          }, 6000)
+        } catch (error) {
+          setKnockStatus('没敲到：' + (error.message || '接口未连接'), 'error')
+        } finally {
+          knockButton.disabled = false
+        }
+      }
+
+      knockButton.addEventListener('click', sendKnock)
+      knockInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          sendKnock(event)
+        }
+      })
+
+      function setUsage(usage) {
+        const turns = Math.max(0, Math.round(Number(usage && usage.turns) || 0))
+        const tokens = Math.max(0, Math.round(Number(usage && usage.tokens) || 0))
+        const input = Math.max(0, Math.round(Number(usage && usage.inputTokens) || 0))
+        const output = Math.max(0, Math.round(Number(usage && usage.outputTokens) || 0))
+        const cacheRead = Math.max(0, Math.round(Number(usage && usage.cacheReadTokens) || 0))
+
+        turnsEl.textContent = turns + ' 轮'
+        turnsEl.title = '今日所有会话已完成的 turn 数'
+        tokensEl.textContent = formatToken(tokens)
+        tokensEl.title = [
+          '总计 ' + tokens.toLocaleString('zh-CN') + ' tokens',
+          '输入 ' + input.toLocaleString('zh-CN'),
+          '输出 ' + output.toLocaleString('zh-CN'),
+          '缓存读 ' + cacheRead.toLocaleString('zh-CN')
+        ].join(' · ')
+      }
+
+      function setConnection(mode, text) {
+        connEl.classList.toggle('is-live', mode === 'live')
+        connEl.classList.toggle('is-error', mode === 'error')
+        connEl.classList.toggle('is-wait', mode === 'wait')
+        connTextEl.textContent = text
+      }
+
+      function normalizeStats(raw) {
+        const result = {}
+        for (const room of ROOMS) {
+          const value = Number(raw && raw[room.name])
+          result[room.name] = Number.isFinite(value) && value > 0 ? value : 0
+        }
+        return result
+      }
+
+      function updateFallbackRing(stats, total) {
+        if (chart) return
+
+        fallbackRing.hidden = false
+        fallbackNote.hidden = false
+
+        if (total <= 0) {
+          fallbackRing.style.background = 'conic-gradient(rgba(121, 160, 185, 0.13) 0 100%)'
+          return
+        }
+
+        let cursor = 0
+        const stops = ROOMS.map((room) => {
+          const start = cursor
+          cursor += (stats[room.name] / total) * 100
+          return room.color + ' ' + start.toFixed(2) + '% ' + cursor.toFixed(2) + '%'
+        })
+        fallbackRing.style.background = 'conic-gradient(' + stops.join(', ') + ')'
+      }
+
+      function ensureChart() {
+        if (chart || chartBroken) return chart
+        if (!window.echarts) return null
+
+        try {
+          chart = window.echarts.init(chartDom, null, { renderer: 'canvas' })
+          chart.setOption({
+            animationDuration: 500,
+            animationDurationUpdate: 320,
+            animationEasingUpdate: 'cubicOut',
+            color: ROOMS.map((room) => room.color),
+            tooltip: {
+              trigger: 'item',
+              confine: true,
+              backgroundColor: 'rgba(5, 14, 23, 0.94)',
+              borderColor: 'rgba(125, 181, 211, 0.26)',
+              borderWidth: 1,
+              padding: [8, 11],
+              textStyle: {
+                color: '#eaf7ff',
+                fontSize: 12,
+                fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif'
+              },
+              formatter: (params) => {
+                if (params.name === '暂无记录') return ''
+                const total = (current && current.stats ? Object.values(current.stats) : [])
+                  .reduce((sum, value) => sum + Number(value || 0), 0)
+                const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : '0.0'
+                return params.marker + params.name + '<br/>' + formatDuration(params.value) + ' · ' + percent + '%'
+              }
+            },
+            series: [
+              {
+                name: '今日停留',
+                type: 'pie',
+                radius: ['58%', '81%'],
+                center: ['50%', '50%'],
+                startAngle: 90,
+                clockwise: true,
+                avoidLabelOverlap: true,
+                itemStyle: {
+                  borderColor: '#08131f',
+                  borderWidth: 2,
+                  borderRadius: 4
+                },
+                label: { show: false },
+                labelLine: { show: false },
+                emphasis: {
+                  scale: true,
+                  scaleSize: 5,
+                  itemStyle: {
+                    shadowBlur: 22,
+                    shadowColor: 'rgba(0, 0, 0, 0.48)'
+                  }
+                },
+                data: []
+              }
+            ]
+          })
+          fallbackRing.hidden = true
+          fallbackNote.hidden = true
+          return chart
+        } catch {
+          chartBroken = true
+          chart = null
+          return null
+        }
+      }
+
+      function updateChart(stats, total) {
+        const instance = ensureChart()
+        if (!instance) {
+          updateFallbackRing(stats, total)
+          return
+        }
+
+        const data = total > 0
+          ? ROOMS.map((room) => ({ name: room.name, value: stats[room.name] }))
+          : [{
+              name: '暂无记录',
+              value: 1,
+              tooltip: { show: false },
+              itemStyle: { color: 'rgba(121, 160, 185, 0.13)' },
+              emphasis: { disabled: true }
+            }]
+
+        instance.setOption({
+          series: [{ data }]
+        })
+      }
+
+      function applyPayload(data) {
+        const room = typeof data.room === 'string' && data.room ? data.room : '未知'
+        const status = typeof data.status === 'string' && data.status ? data.status : '—'
+        const x = Number(data.position && data.position.x)
+        const y = Number(data.position && data.position.y)
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          throw new Error('position 不是有效数值')
+        }
+
+        const stats = normalizeStats(data.todayStats)
+        const total = ROOMS.reduce((sum, item) => sum + stats[item.name], 0)
+        const roomColor = ROOM_BY_NAME[room] ? ROOM_BY_NAME[room].color : '#57d8ff'
+        const usage = data.todayUsage && typeof data.todayUsage === 'object' ? data.todayUsage : {}
+
+        current = { room, status, stats, usage, furniture: data.furniture || null, x, y }
+        motion.targetX = Math.min(WORLD, Math.max(0, x))
+        motion.targetY = Math.min(WORLD, Math.max(0, y))
+        motion.room = room
+
+        roomEl.textContent = room
+        statusEl.textContent = status
+        totalEl.textContent = formatDuration(total)
+        setUsage(usage)
+        setHealth(data.systemHealth)
+        setChartDuration(total)
+        coordsEl.textContent = 'x ' + x.toFixed(1) + ' · y ' + y.toFixed(1)
+        document.documentElement.style.setProperty('--accent', roomColor)
+        document.documentElement.style.setProperty('--accent-glow', hexToRgba(roomColor, 0.2))
+        canvas.setAttribute(
+          'aria-label',
+          '赛博小屋地图，小鱼当前在' + room + '，状态是' + status + '，坐标 ' + x.toFixed(0) + '，' + y.toFixed(0)
+        )
+
+        lastUpdated = new Date()
+        updatedEl.textContent = '最后同步 ' + formatClock(lastUpdated)
+        updateChart(stats, total)
+      }
+
+      function hexToRgba(hex, alpha) {
+        const value = String(hex).replace('#', '')
+        if (!/^[0-9a-f]{6}$/i.test(value)) return 'rgba(87, 216, 255, ' + alpha + ')'
+        const r = parseInt(value.slice(0, 2), 16)
+        const g = parseInt(value.slice(2, 4), 16)
+        const b = parseInt(value.slice(4, 6), 16)
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')'
+      }
+
+      async function refresh() {
+        if (fetching) return
+        fetching = true
+
+        const controller = new AbortController()
+        const timeout = window.setTimeout(() => controller.abort(), 4500)
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller.signal,
+            headers: { Accept: 'application/json' }
+          })
+          if (!response.ok) throw new Error('HTTP ' + response.status)
+
+          const payload = await response.json()
+          if (!payload || payload.ok !== true || !payload.data) {
+            throw new Error('接口返回格式不正确')
+          }
+
+          applyPayload(payload.data)
+          setConnection('live', '接口在线')
+          offlineEl.hidden = true
+        } catch (error) {
+          setConnection('error', '接口未连接')
+          offlineEl.hidden = false
+          offlineEl.textContent = '接口未连接 · 先运行 node cyber_house/api-router.js'
+          if (!current) {
+            statusEl.textContent = '等待小屋信号…'
+            updatedEl.textContent = '会自动重试'
+          }
+        } finally {
+          window.clearTimeout(timeout)
+          fetching = false
+        }
+      }
+
+      let resizeTimer = 0
+      window.addEventListener('resize', () => {
+        window.clearTimeout(resizeTimer)
+        resizeTimer = window.setTimeout(() => {
+          if (chart) chart.resize()
+        }, 80)
+      })
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refresh()
+      })
+
+      // -------------------------------------------------------------------
+      // Type-C 手机电量感知（与 home_leaflet.html 同一套协议）
+      // 只在手机浏览器里跑，避免把笔记本电池误报成手机插拔。
+      // -------------------------------------------------------------------
+      const PHONE_BATTERY_POLL_MS = 60 * 1000
+      const isPhoneBrowser = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(navigator.userAgent)
+      const forceBattery = params.get('battery') === '1'
+      let phoneBatteryTimer = null
+      let phoneBatteryLastCharging = null
+
+      function renderPhoneBattery(battery) {
+        if (!phoneBatteryEl) return
+        if (!battery) {
+          phoneBatteryEl.hidden = true
+          return
+        }
+        const percent = Math.round(Number(battery.level) * 100)
+        phoneBatteryEl.hidden = false
+        phoneBatteryEl.textContent =
+          '🔋 手机 ' + (Number.isFinite(percent) ? percent + '%' : '—')
+          + (battery.charging === true ? ' · 充电中' : '')
+      }
+
+      function postPhoneBattery(action, battery) {
+        if (!battery) return Promise.resolve(null)
+        const level = Number(battery.level)
+        if (!Number.isFinite(level)) return Promise.resolve(null)
+        return fetch(BATTERY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            action,
+            level: Math.min(1, Math.max(0, level)),
+            charging: battery.charging === true,
+            source: 'battery-status-api'
+          }),
+          keepalive: true
+        }).catch(() => null)
+      }
+
+      function stopPhoneBatteryUpdates() {
+        if (phoneBatteryTimer !== null) {
+          window.clearInterval(phoneBatteryTimer)
+          phoneBatteryTimer = null
+        }
+      }
+
+      function startPhoneBatteryUpdates(battery) {
+        stopPhoneBatteryUpdates()
+        phoneBatteryTimer = window.setInterval(() => {
+          if (!battery || battery.charging !== true) {
+            stopPhoneBatteryUpdates()
+            return
+          }
+          void postPhoneBattery('update', battery)
+        }, PHONE_BATTERY_POLL_MS)
+      }
+
+      function setupPhoneBattery() {
+        if (!(isPhoneBrowser || forceBattery)) return
+        if (typeof navigator.getBattery !== 'function') return
+        let batteryPromise
+        try {
+          batteryPromise = navigator.getBattery()
+        } catch {
+          if (phoneBatteryEl) {
+            phoneBatteryEl.hidden = false
+            phoneBatteryEl.textContent = '🔋 电量读取被拒绝'
+          }
+          return
+        }
+        Promise.resolve(batteryPromise).then((battery) => {
+          const apply = () => {
+            const charging = battery.charging === true
+            renderPhoneBattery(battery)
+
+            if (phoneBatteryLastCharging === null) {
+              phoneBatteryLastCharging = charging
+              // 页面加载不是物理插拔：先静默同步一次。
+              void postPhoneBattery('update', battery)
+              if (charging) startPhoneBatteryUpdates(battery)
+              return
+            }
+
+            if (charging === phoneBatteryLastCharging) return
+            phoneBatteryLastCharging = charging
+            if (charging) {
+              void postPhoneBattery('plug_in', battery)
+              startPhoneBatteryUpdates(battery)
+            } else {
+              stopPhoneBatteryUpdates()
+              void postPhoneBattery('unplug', battery)
+            }
+          }
+
+          apply()
+          battery.addEventListener('chargingchange', apply)
+          battery.addEventListener('levelchange', () => renderPhoneBattery(battery))
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return
+            renderPhoneBattery(battery)
+            if (battery.charging === true) {
+              void postPhoneBattery('update', battery)
+              if (phoneBatteryTimer === null) startPhoneBatteryUpdates(battery)
+            }
+          })
+        }).catch(() => {
+          if (phoneBatteryEl) {
+            phoneBatteryEl.hidden = false
+            phoneBatteryEl.textContent = '🔋 电量读取被拒绝'
+          }
+        })
+      }
+
+      setupPhoneBattery()
+      window.requestAnimationFrame(frame)
+      refresh()
+      window.setInterval(refresh, POLL_MS)
+
+      // 方便在浏览器控制台里检查当前渲染状态，不属于接口契约。
+      window.__FISH_HOME__ = { API_URL, ROOMS, motion, get current() { return current } }
+    })()
+  </script>
+</body>
+</html>

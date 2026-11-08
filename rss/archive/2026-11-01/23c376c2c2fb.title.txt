@@ -1,0 +1,1 @@
+From articles to canopies: Knowledge-driven pseudo-labelling for tree species classification using LLM experts

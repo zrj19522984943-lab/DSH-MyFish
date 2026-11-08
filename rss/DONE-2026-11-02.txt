@@ -1,0 +1,8 @@
+DONE 2026-11-02 10:36:08
+feeds_ok: 2/2
+raw_articles: 25
+summaries_written: 0
+summaries_skipped: 25
+summary_errors: 0
+archive: rss/archive/2026-11-02/ (75 files)
+api_key: 未配置（环境变量 INTERN_API_KEY 为空）→ 本轮摘要步骤已跳过

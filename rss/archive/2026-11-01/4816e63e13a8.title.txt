@@ -1,0 +1,1 @@
+Quantifying aleatoric and epistemic uncertainty in remote sensing spectral super-resolution via Bayesian deep learning

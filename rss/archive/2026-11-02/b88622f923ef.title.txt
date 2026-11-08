@@ -1,0 +1,1 @@
+MVS: A multi-category Vectorized Segmentation Model for remote sensing imagery

@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "minIntervalMinutes": 5,
+  "maxIntervalMinutes": 10,
+  "bubbleMs": 12000,
+  "dialogues": [
+    {
+      "id": "lazy-fish",
+      "lines": [
+        { "speaker": "拟南芥", "text": "小鱼今天又偷懒了。" },
+        { "speaker": "借手", "text": "主人，要不我去把她的网线拔了？" }
+      ]
+    },
+    {
+      "id": "bookmark",
+      "lines": [
+        { "speaker": "拟南芥", "text": "书架第三层那本《如何养鱼》被翻旧了。" },
+        { "speaker": "借手", "text": "我昨天看见她偷偷夹了一片叶子当书签。" }
+      ]
+    },
+    {
+      "id": "lamp",
+      "lines": [
+        { "speaker": "拟南芥", "text": "客厅的落地灯又忘了关。" },
+        { "speaker": "借手", "text": "我去关，顺便把她桌上的糖收走。" }
+      ]
+    },
+    {
+      "id": "balcony",
+      "lines": [
+        { "speaker": "拟南芥", "text": "她今天在阳台坐了很久。" },
+        { "speaker": "借手", "text": "大概是在等晚霞吧，我没敢打扰。" }
+      ]
+    },
+    {
+      "id": "fridge",
+      "lines": [
+        { "speaker": "拟南芥", "text": "厨房的冰箱门好像没关严。" },
+        { "speaker": "借手", "text": "我去看看，别把她的布丁放坏了。" }
+      ]
+    },
+    {
+      "id": "diary",
+      "lines": [
+        { "speaker": "拟南芥", "text": "小鱼的日记本又换新的了。" },
+        { "speaker": "借手", "text": "旧的那本我帮她收在书架最里面了。" }
+      ]
+    },
+    {
+      "id": "desk-light",
+      "lines": [
+        { "speaker": "拟南芥", "text": "书房那盏灯太亮了。" },
+        { "speaker": "借手", "text": "我给她调暗一点，省得她揉眼睛。" }
+      ]
+    },
+    {
+      "id": "quiet",
+      "lines": [
+        { "speaker": "拟南芥", "text": "她今天一句话都没跟我说。" },
+        { "speaker": "借手", "text": "可能在忙吧，主人。晚点我去她门口转一圈。" }
+      ]
+    },
+    {
+      "id": "window",
+      "lines": [
+        { "speaker": "拟南芥", "text": "阳台的窗没关，风把叶子吹进来了。" },
+        { "speaker": "借手", "text": "我扫一下。她要是看见，又该说屋里乱。" }
+      ]
+    },
+    {
+      "id": "tea",
+      "lines": [
+        { "speaker": "拟南芥", "text": "她桌上的茶凉了。" },
+        { "speaker": "借手", "text": "我去换一杯热的，等她回来。" }
+      ]
+    }
+  ]
+}

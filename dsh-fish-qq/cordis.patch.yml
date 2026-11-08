@@ -1,0 +1,83 @@
+# @doc merge.patch
+# dsh-fish-qq 的 bundle patch：一行 insert 装起两个插件。
+#
+# ⚠️ 这个文件里的 config 是**初始默认值**。用户在设置页改过之后，
+#    值落在各自的设置文件里（大肥鱼：~/.dsh-fish/config.json；QQ：$DSH_HOME/qq-bridge-settings.json），
+#    不会被这里覆盖。要恢复默认就把这里整块重述一遍。
+#
+# fish 与 qq 分槽，互不串味。
+- insert:
+    - id: dsh-fish-qq
+      name: dsh-fish-qq
+      config:
+        fish:
+          # 状态库根目录；留空 = $DSH_FISH_HOME 或 ~/.dsh-fish
+          root: ''
+          # 首次播种那句话（只在第一次启动、事件流为空时用）；留空 = 内置的那句
+          seed: ''
+        qq:
+          # 目标会话：留空 + 下面这个开关打开 = 自动用大肥鱼的屋子会话（合并包专有）
+          targetSessionId: ''
+          # 合并包专有：目标会话留空时，自动读 ~/.dsh-fish/home.json 的 sessionId。
+          # 独立安装 dsh-qq-bridge 时这一项不存在、行为不变。
+          targetSessionFromFish: true
+          agentPreset: ''
+          # 状态文件；留空 = $DSH_HOME/qq-bridge-state.json
+          statePath: ''
+          # 工作区根目录：她派任务、看目录、发文件都限定在这里。填绝对路径；
+          # 留空 = 这些能力如实说没配（不猜目录）。可随时在设置页改。
+          workspaceRoot: ''
+          debugTools: true
+          # 合并包里是否把 6 个 QQ 管理/调试工具（status / proactive / idle /
+          # transport / simulate / napcat）也注册给 DSH 工作区。
+          # 默认 false：用户写代码的工作区保持原生工具面（只有 write / bash / read 等）；
+          # 要排障时临时改成 true（设置页改完下一次启动生效）。
+          debugToolsInWorkspace: false
+
+          # ── OneBot 传输（NapCat / go-cqhttp）──
+          # NapCat 的正向 WebSocket 地址；留空 = 完全不启用传输（默认安全）
+          onebotUrl: ''
+          # 存放 access_token 的**环境变量名**，不是 token 本身
+          accessTokenEnv: ''
+          selfId: ''
+          replyWithQuote: false
+          atOnlyInGroup: false
+          stripMarkdown: true
+          heartbeatTimeoutMs: 90000
+
+          # ── NapCat 自助托管（只是参数，不会自动下载执行）──
+          napcatInstallDir: ''
+          napcatVersion: ''
+          downloadProxy: ''
+          onebotPort: 3001
+          qqNumber: ''
+
+          # ── 设置命名空间 qq-bridge 的默认值（设置页可覆盖）──
+          nicknames: ['244', '小助手']
+          wakeProbability: 0.05
+          # 白名单 fail-closed：留空 = 谁都不能唤醒
+          whitelist: []
+          groupWhitelist: []
+          # 认主：留空 = 谁都不是主人（所有人都会被贴「非主人」标记）
+          ownerQQ: ''
+          # 管理员名单：贴「[来源：管理员用户]」标记 —— 可以聊天、可以派活（work_request）、
+          # 能用 fileget / filesend；subsend / whitelist / admin 仍只有主人能下。
+          # 也能在 QQ 上用 `admin add/del <QQ号>` 改（只有主人能改）。空 = 没有管理员。
+          admins: []
+          # 不定时主动私聊
+          proactiveEnabled: false
+          proactiveIdleHours: 4
+          proactiveProbability: 0.15
+          proactiveDailyLimit: 3
+          proactiveScanIntervalMinutes: 30
+          # subsend：主人发 `subsend <QQ号> <内容>` 时，把内容私聊给指定的人
+          subsendEnabled: true
+          subsendDailyLimit: 20
+          subsendCooldownSeconds: 20
+          # 任务完成日志（CheckLogs）通知：任务做完了，要不要让主人知道一声、怎么说。
+          # 这里只立字段（mode 默认 'off' = 什么都不说），发送逻辑在插件里：
+          # 'system' = 插件发模板；'agent' = 投给她让她自己说（没说就退回模板）。
+          checklogNotifyMode: 'off'
+          checklogNotifyOnSuccess: false
+          checklogNotifyDailyLimit: 5
+          checklogNotifyTarget: 'owner'
