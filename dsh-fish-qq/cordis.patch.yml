@@ -43,6 +43,9 @@
           replyWithQuote: false
           atOnlyInGroup: false
           stripMarkdown: true
+          replyMode: 'marker'
+          delivery: 'auto'
+          visionModel: ''
           heartbeatTimeoutMs: 90000
 
           # ── NapCat 自助托管（只是参数，不会自动下载执行）──
@@ -53,11 +56,18 @@
           qqNumber: ''
 
           # ── 设置命名空间 qq-bridge 的默认值（设置页可覆盖）──
+          # 默认值的事实来源是 qq/shared/settings-contract.js；这里只列合并包的
+          # composition 初始值，改默认值请先改 contract 再同步本文件。
           nicknames: ['244', '小助手']
           wakeProbability: 0.05
+          privateWakeProbability: 1
           # 白名单 fail-closed：留空 = 谁都不能唤醒
           whitelist: []
           groupWhitelist: []
+          # 唤醒时附带未唤醒期间的聊天记录 / 出站字数上限
+          attachRecentChat: true
+          recentChatLimit: 8
+          replyMaxChars: 1500
           # 认主：留空 = 谁都不是主人（所有人都会被贴「非主人」标记）
           ownerQQ: ''
           # 管理员名单：贴「[来源：管理员用户]」标记 —— 可以聊天、可以派活（work_request）、
@@ -70,6 +80,15 @@
           proactiveProbability: 0.15
           proactiveDailyLimit: 3
           proactiveScanIntervalMinutes: 30
+          # 私人时间 / 自主待机（空闲够久 + 随机抽签 + 高频沉默）
+          idleTriggerEnabled: false
+          idleTriggerScanIntervalMinutes: 30
+          idleTriggerMinIdleHours: 2
+          idleTriggerDailyMax: 3
+          idleTriggerWeightSilent: 80
+          idleTriggerWeightMessage: 10
+          idleTriggerWeightBrowse: 5
+          idleTriggerWeightDiary: 5
           # subsend：主人发 `subsend <QQ号> <内容>` 时，把内容私聊给指定的人
           subsendEnabled: true
           subsendDailyLimit: 20
@@ -81,3 +100,17 @@
           checklogNotifyOnSuccess: false
           checklogNotifyDailyLimit: 5
           checklogNotifyTarget: 'owner'
+
+          # ── 情报流水线（预留；逻辑未接，默认全空）──
+          rssFeeds: ''
+          pipelineWorkerApi: ''
+          pipelineWorkerKey: ''
+
+          # ── 模型池（3 个固定槽位；默认空 = 回退宿主 llm）──
+          modelPool: []
+
+          # ── 环境传感器（默认关；打开后按 envSensorTime 采集）──
+          envSensorEnabled: false
+          envWeatherCity: ''
+          envSensorTime: '*/15 * * * *'
+          envMemoryThreshold: 80

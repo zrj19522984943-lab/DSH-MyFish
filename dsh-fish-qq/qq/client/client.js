@@ -83,374 +83,17 @@ window.__ModuleLoader__.load({
     }
 
     // ── 表单描述 ──────────────────────────────────────────────────────────────
-    // 加一个设置项 = 在这里加一行。kind: text | list | number | boolean | select；
-    // group 见下面的 GROUPS —— 漏写 group 的字段**哪一组都不渲染**，界面上直接消失
-    // （加载时会吼一嗓子，但界面仍然没有它，加完务必人工数一遍）。
-    //
-    // 前 3 个字段不在这里写：它们来自 qq/shared/settings-contract.js，构建时由
-    // scripts/build-bundle.mjs 序列化成 __INJECTED_CONTRACT 注入到本函数体最前面。
-    // 直接跑源文件（test-smoke.mjs）时由测试沙箱提供同名变量，行为与产物一致。
-    const CONTRACT_FIELDS = (typeof __INJECTED_CONTRACT === 'undefined' ? [] : __INJECTED_CONTRACT).map((f) => ({
-      key: f.key,
-      label: f.label,
-      kind: f.kind,
-      group: f.group,
-      options: f.options,
-      hint: f.hint,
-    }))
-
-    const FIELDS = [
-      ...CONTRACT_FIELDS,
-      {
-        key: 'targetSessionId',
-        label: '目标会话',
-        kind: 'session',
-        group: 'core',
-        hint: '要接管哪个会话 —— 按名字选就行，不用记 id。',
-      },
-      {
-        key: 'nicknames',
-        label: '昵称',
-        kind: 'list',
-        group: 'wake',
-        hint: '被叫到这些名字必然唤醒；逗号分隔，例如：244, 小助手。',
-      },
-      {
-        key: 'wakeProbability',
-        label: '群聊唤醒概率',
-        kind: 'number',
-        group: 'wake',
-        step: '0.01',
-        hint: '群里既没被 @ 也没叫名字时的唤醒概率（0–1）。默认 0.05 = 5%；嫌吵就调小，0 = 只在被叫时说话。',
-      },
-      {
-        key: 'privateWakeProbability',
-        label: '私聊唤醒概率',
-        kind: 'number',
-        group: 'wake',
-        step: '0.01',
-        hint: '私聊里既没被 @ 也没叫名字时的唤醒概率（0–1）。默认 1 = 每条私聊都必回。',
-      },
-      {
-        key: 'whitelist',
-        label: '私聊白名单',
-        kind: 'list',
-        group: 'wake',
-        hint: '允许唤醒的私聊 QQ 号；**空 = 谁都不能唤醒**。',
-      },
-      {
-        key: 'groupWhitelist',
-        label: '群白名单',
-        kind: 'list',
-        group: 'wake',
-        hint: '允许唤醒的群号；**空 = 任何群都不唤醒**。',
-      },
-      {
-        key: 'atOnlyInGroup',
-        label: '群里只认 @',
-        kind: 'boolean',
-        group: 'wake',
-        hint: '开启后，群里没被 @ 就完全不处理（比概率唤醒更严）。',
-      },
-      { key: 'replyWithQuote', label: '引用原消息', kind: 'boolean', group: 'outbound', hint: '回复时引用触发的那条消息。' },
-      { key: 'stripMarkdown', label: '去掉 Markdown', kind: 'boolean', group: 'outbound', hint: '出站前去掉 Markdown 标记（QQ 不渲染）。' },
-      {
-        key: 'replyMaxChars',
-        label: '出站字数上限',
-        kind: 'number',
-        group: 'outbound',
-        hint: '出站文本的字数上限；超过就不发送，请缩短后重发。',
-      },
-      {
-        key: 'onebotUrl',
-        label: 'OneBot 地址',
-        kind: 'text',
-        group: 'infra',
-        hint: 'NapCat 的正向 WS 地址，如 ws://127.0.0.1:3001；留空 = 完全不启用传输。',
-      },
-      {
-        key: 'accessTokenEnv',
-        label: 'OneBot Token 凭据名',
-        kind: 'text',
-        group: 'infra',
-        hint: '指 **NapCat / OneBot 的 access_token** 存在哪个环境变量里 —— 填「变量名」（如 NAPCAT_TOKEN），不是 token 本身；NapCat 没开 token 校验就留空。⚠️ 不是模型 API key（DeepSeek 等），两者无关，别填错。',
-        check: (v) => {
-          const s = String(v ?? '').trim()
-          if (s === '') return null
-          if (/^(sk-|Bearer\s)/i.test(s) || s.length > 64 || /[.\s]/.test(s)) {
-            return '这看起来像一串 token —— 这一栏要填的是「存它的环境变量名」（如 NAPCAT_TOKEN），不是 token 本身。'
-          }
-          return null
-        },
-      },
-      { key: 'selfId', label: '机器人 QQ', kind: 'text', group: 'infra', hint: '留空 = 连上后自动获取。' },
-      // ↓ 这些键以前只在 Schema 里、卡片上没做输入框，等于“设了也改不了”（用户报的正是这个）
-      {
-        key: 'visionModel',
-        label: '识图模型',
-        kind: 'text',
-        group: 'infra',
-        hint: '给图片写描述的多模态模型，形如 provider/model（如 deepseek-official/deepseek-v4-flash-vision-exp）；留空 = 自动找（优先名字带 vision 的）。',
-      },
-      {
-        key: 'agentPreset',
-        label: 'Agent Preset',
-        kind: 'text',
-        group: 'core',
-        hint: '恢复目标会话时挂载哪个 preset（决定它的人设/人格）；留空 = 沿用会话自己记着的那个。',
-      },
-      { key: 'attachRecentChat', label: '附带未唤醒记录', kind: 'boolean', group: 'wake', hint: '唤醒时是否把"未唤醒期间"的聊天记录一并附上。' },
-      { key: 'recentChatLimit', label: '附带条数', kind: 'number', group: 'wake', hint: '上面那段摘要最多带最近几条（0–200）。' },
-      { key: 'napcatInstallDir', label: 'NapCat 目录', kind: 'text', group: 'infra', hint: 'NapCat 安装目录；留空 = $DSH_HOME/napcat。' },
-      { key: 'napcatVersion', label: 'NapCat 版本', kind: 'text', group: 'infra', hint: '要下载的版本 tag（如 v4.18.28）；留空 = 最新。' },
-      { key: 'downloadProxy', label: '下载代理', kind: 'text', group: 'infra', hint: '下载 NapCat 用的 HTTP 代理（如 http://127.0.0.1:7890）；留空 = 读环境变量。' },
-      { key: 'onebotPort', label: 'OneBot 端口', kind: 'number', group: 'infra', hint: '写进 NapCat 配置、并用来连的正向 WS 端口。' },
-      { key: 'qqNumber', label: '快速登录 QQ', kind: 'text', group: 'infra', hint: '快速登录用的 QQ 号（需先成功登录过一次）。' },
-      // ── 工作区（2026-10-27）──
-      {
-        key: 'workspaceRoot',
-        label: '工作区根目录',
-        kind: 'text',
-        group: 'core',
-        hint: '她派任务、看目录、发文件都限定在这片目录里。填绝对路径（如 D:\\demo\\我的项目）；留空 = 这些能力不可用。',
-      },
-      // ── 认主（2026-10-26）──
-      {
-        key: 'ownerQQ',
-        label: '主人 QQ',
-        kind: 'text',
-        group: 'core',
-        hint: '主人的 QQ 号。**只有这个号能派活**；其他人发来的消息也会进会话，但正文前会多一行「非主人」标记，只许聊天、不许调工具。留空 = 谁都不是主人（所有人都被贴标）。',
-        check: (v) => {
-          const s = String(v ?? '').trim()
-          if (s === '') return null
-          return /^\d{5,12}$/.test(s) ? null : 'QQ 号应该是 5–12 位数字。'
-        },
-      },
-      // ── 管理员名单（2026-10-29）──
-      {
-        key: 'admins',
-        label: '管理员名单',
-        kind: 'list',
-        group: 'core',
-        hint: '管理员发来的消息贴「[来源：管理员用户]」标记：可以聊天、可以让她派活（work_request）、能用 fileget / filesend / receive（看收件箱）。subsend / whitelist / admin 仍然只有主人能下。QQ 上也可以用 `admin add/del <QQ号>` 改这份名单（只有主人能改）。空 = 没有管理员。',
-      },
-      // ── 不定时主动私聊（2026-10-26）──
-      {
-        key: 'proactiveEnabled',
-        label: '主动私聊',
-        kind: 'boolean',
-        group: 'idle',
-        hint: '打开后，空闲够久 + 随机命中时，她会主动给主人发一条 QQ 私聊（不是定时提醒，触发时刻不确定）。默认关。',
-      },
-      {
-        key: 'proactiveIdleHours',
-        label: '空闲多少小时',
-        kind: 'number',
-        group: 'idle',
-        hint: '多久没有任何 QQ 往来才算「空闲」。默认 4。',
-      },
-      {
-        key: 'proactiveProbability',
-        label: '每次命中概率',
-        kind: 'number',
-        group: 'idle',
-        hint: '每次扫描命中主动私聊的概率（0–1）。默认 0.15；调小更克制、调大更黏人。',
-      },
-      {
-        key: 'proactiveDailyLimit',
-        label: '每天上限',
-        kind: 'number',
-        group: 'idle',
-        hint: '每天最多主动私聊几条（0 = 不发）。默认 3，建议别超过 3——发太多容易被 QQ 判定异常。',
-      },
-      {
-        key: 'proactiveScanIntervalMinutes',
-        label: '扫描间隔（分钟）',
-        kind: 'number',
-        group: 'idle',
-        hint: '多久检查一次「该不该主动说话」。默认 30。',
-      },
-      // ── 私人时间 / 自主待机（2026-10-31）──
-      {
-        key: 'idleTriggerEnabled',
-        label: '私人时间',
-        kind: 'boolean',
-        group: 'idle',
-        hint: '打开后，很久没人找她时会随机抽签给她一段属于自己的时间——大概率什么都不发生（silent 权重最高），极少注入一段「私人时间」处境提示。注入的那一轮默认不出站：只有她明确写了 [QQ] 块或调了出站工具，消息才会到 QQ。默认关。',
-      },
-      {
-        key: 'idleTriggerMinIdleHours',
-        label: '空闲多少小时',
-        kind: 'number',
-        group: 'idle',
-        hint: '多久没人找她（QQ 来人或 DSH 界面说话）才算「空闲」。默认 2；0 = 不看空闲（调试用）。',
-      },
-      {
-        key: 'idleTriggerScanIntervalMinutes',
-        label: '扫描间隔（分钟）',
-        kind: 'number',
-        group: 'idle',
-        hint: '多久检查一次「该不该给她一段私人时间」。这只是判定周期，不是定时打扰。默认 30。',
-      },
-      {
-        key: 'idleTriggerDailyMax',
-        label: '每天上限',
-        kind: 'number',
-        group: 'idle',
-        hint: '每天最多真的注入几段私人时间（抽到「什么都不做」不算）。默认 3；0 = 关闭。',
-      },
-      {
-        key: 'idleTriggerWeightSilent',
-        label: '权重·继续停机',
-        kind: 'number',
-        group: 'idle',
-        hint: '抽签权重：什么都不做、继续停机。**必须占绝对优势**（默认 80）——她绝大部分时间就是在睡着，极少被打扰。',
-      },
-      {
-        key: 'idleTriggerWeightMessage',
-        label: '权重·想找他说',
-        kind: 'number',
-        group: 'idle',
-        hint: '抽签权重：提示里把「给他发条消息」排在最前（仍由她自己选）。默认 10。',
-      },
-      {
-        key: 'idleTriggerWeightBrowse',
-        label: '权重·去 B 站',
-        kind: 'number',
-        group: 'idle',
-        hint: '抽签权重：提示里把「去 B 站看看」排在最前。默认 5。',
-      },
-      {
-        key: 'idleTriggerWeightDiary',
-        label: '权重·写日记',
-        kind: 'number',
-        group: 'idle',
-        hint: '抽签权重：提示里把「写写日记」排在最前。默认 5。',
-      },
-      // ── subsend：主人点名发给谁（2026-10-26）──
-      {
-        key: 'subsendEnabled',
-        label: 'subsend 主动发消息',
-        kind: 'boolean',
-        group: 'outbound',
-        hint: '主人发 `subsend <QQ号> <内容>` 时，把内容私聊给指定的人（她调 qq_bridge_subsend 工具发，可润色）。默认开。',
-      },
-      {
-        key: 'subsendDailyLimit',
-        label: 'subsend 每天上限',
-        kind: 'number',
-        group: 'outbound',
-        hint: 'subsend 每天最多发几条（防刷屏 / 防 QQ 风控）。默认 20；0 = 禁用。',
-      },
-      {
-        key: 'subsendCooldownSeconds',
-        label: 'subsend 冷却（秒）',
-        kind: 'number',
-        group: 'outbound',
-        hint: 'subsend 两次发送之间的最短间隔。默认 20。',
-      },
-      // ── 任务完成通知（CheckLogs，2026-10-28）──
-      // checklogNotifyMode 在 settings-contract 里（见上方 CONTRACT_FIELDS）。
-      {
-        key: 'checklogNotifyOnSuccess',
-        label: '成功也说一声',
-        kind: 'boolean',
-        group: 'outbound',
-        hint: '任务**成功**完成时也通知；默认关 = 失败 / 超时 / 异常结束才说（成功是本分，不打断你）。',
-      },
-      {
-        key: 'checklogNotifyDailyLimit',
-        label: '通知每天上限',
-        kind: 'number',
-        group: 'outbound',
-        hint: '每天最多通知几条（0 = 一条都不发）。默认 5；两档（系统模板 / 让她自己说）共用这一个额度。',
-      },
-      {
-        key: 'checklogNotifyTarget',
-        label: '通知发给谁',
-        kind: 'select',
-        group: 'outbound',
-        options: [
-          ['owner', '主人（默认）'],
-          ['last', '最近聊过的人'],
-        ],
-        hint: '主人 = 你的 QQ 私聊；最近聊过的人 = 最近一次有往来的目的地（私聊），最近是群或还没有往来时回落主人。',
-      },
-      // ── 模型池（2026-11-03）：3 个固定槽位，摘要优先用它，失败回退宿主 llm ──
-      {
-        key: 'modelPool',
-        label: '模型池',
-        kind: 'modelpool',
-        group: 'modelpool',
-        hint: '给摘要这类短任务用的备用模型。按 Slot 1 → 2 → 3 找第一个「已启用且填全」的；失败 / 超时 10 秒就回退宿主自己的模型。',
-      },
-      // ── 情报流水线（预留，2026-11-01）：先立字段，逻辑（RSS 抓取 / worker
-      //     对接）由后面的任务接 —— 与 checklog 通知「任务书 1 只立字段」同一个
-      //     口径：先保证能存能读、界面可见，默认全空 = 什么都不发生。──
-      {
-        key: 'rssFeeds',
-        label: 'RSS 订阅源',
-        kind: 'text',
-        group: 'pipeline',
-        hint: '逗号分隔的 RSS 链接，如 https://example.com/feed.xml, https://another.com/rss；先存着，等流水线接上就是定投给她看的消息源。',
-      },
-      {
-        key: 'pipelineWorkerApi',
-        label: '流水线 Worker 地址',
-        kind: 'text',
-        group: 'pipeline',
-        hint: '跑情报流水线的 worker API 地址；留空 = 还没部署，这一组先当摆设。',
-      },
-      {
-        key: 'pipelineWorkerKey',
-        label: '流水线 Worker 密钥',
-        kind: 'text',
-        group: 'pipeline',
-        hint: '调流水线 worker 时带的校验密钥；留空 = 不校验。',
-      },
-      // ── 环境传感器 / 赛博微状态（2026-11-01；2026-11-02 改为文件驱动）：
-      //     定时抓天气 + 本机状态 → 工作区 sensors/status.md，
-      //     她自己用 check_body 工具按需读，不再注入任何提示词。──
-      {
-        key: 'envSensorEnabled',
-        label: '环境传感器',
-        kind: 'boolean',
-        group: 'env',
-        hint: '打开后，按下面设的时间抓一次天气与本机硬件状态，写成工作区里的一行状态（sensors/status.md）。不再注入提示词——她想感知时自己调 check_body 查看。默认关。',
-      },
-      {
-        key: 'envWeatherCity',
-        label: '城市 / 经纬度',
-        kind: 'text',
-        group: 'env',
-        hint: '城市名（wuhan 或 武汉）或「纬度,经度」（如 30.59,114.30）；留空 = 状态里只有本机，没有天气。数据源是 Open-Meteo（免费、不用 API key）。',
-      },
-      {
-        key: 'envSensorTime',
-        label: '采集时间（Cron）',
-        kind: 'text',
-        group: 'env',
-        hint: '多久采一次并刷新状态：五段式 Cron（分 时 日 月 周，如 0 8 * * * = 每天早八点），也接受 HH:MM（如 08:00）。默认 */15 * * * *（每 15 分钟）。到点会跑一次工作区里的 pipeline/update_env.js。',
-        check: (v) => {
-          const s = String(v ?? '').trim()
-          if (s === '') return null
-          if (/^\d{1,2}:\d{2}$/.test(s)) return null
-          if (/^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(s)) return null
-          return '看不懂这个时间：写五段式 Cron（如 0 8 * * *）或 HH:MM（如 08:00）。'
-        },
-      },
-      {
-        key: 'envMemoryThreshold',
-        label: '内存报警阈值',
-        kind: 'number',
-        group: 'env',
-        hint: '内存占用超过这个百分比（0–100，默认 80）时，状态里的 [机箱状态] 就是「高负载」。',
-      },
-    ]
+    // 字段清单来自 qq/shared/settings-contract.js：构建时由 scripts/build-bundle.mjs
+    // 序列化成 __INJECTED_CONTRACT 注入到 __qqFactory 函数体最前面。
+    // 直接跑源文件（test-smoke.mjs）时由测试沙箱提供同一个变量，行为与产物一致。
+    // 这里**不再手写字段** —— 加/改字段只改 contract。
+    const FIELDS = typeof __INJECTED_CONTRACT === 'undefined' ? [] : __INJECTED_CONTRACT
 
     /**
      * 手风琴的分组：**按这里的固定顺序渲染**，组内按 FIELDS 里的出现顺序。
+     *
+     * group 的**有无**来自 contract（FIELDS 里出现过的 group 才算数），
+     * 顺序与标题保持旧版固定值 —— 不跟着 contract 的声明顺序漂。
      *
      * ⚠️ group 只管显示：
      *   - 草稿 / 保存 / 撤销覆盖全都平铺遍历 FIELDS，与展开状态无关 ——
@@ -458,16 +101,27 @@ window.__ModuleLoader__.load({
      *     混进 scope.set；
      *   - 漏写 group 的字段**哪一组都进不去**（界面上直接消失），加载时验一遍。
      */
-    const GROUPS = [
-      { id: 'core', label: '核心与权限' },
-      { id: 'wake', label: 'QQ 唤醒与投递' },
-      { id: 'outbound', label: '出站与功能' },
-      { id: 'idle', label: '私人时间与主动' },
-      { id: 'infra', label: '底层基础设施' },
-      { id: 'modelpool', label: '模型池' },
-      { id: 'pipeline', label: '情报流水线' },
-      { id: 'env', label: '环境传感器' },
-    ]
+    const GROUP_ORDER = ['core', 'wake', 'outbound', 'idle', 'infra', 'modelpool', 'pipeline', 'env']
+    const GROUP_LABELS = {
+      core: '核心与权限',
+      wake: 'QQ 唤醒与投递',
+      outbound: '出站与功能',
+      idle: '私人时间与主动',
+      infra: '底层基础设施',
+      modelpool: '模型池',
+      pipeline: '情报流水线',
+      env: '环境传感器',
+    }
+    const presentGroups = new Set(FIELDS.map((f) => f.group))
+    const GROUPS = GROUP_ORDER.filter((id) => presentGroups.has(id)).map((id) => ({ id, label: GROUP_LABELS[id] }))
+    // contract 里出现了未知 group 时也要渲染出来（排最后），否则字段会静默消失；
+    // 上面的防错块会把这情况吼出来。
+    for (const f of FIELDS) {
+      if (!GROUP_ORDER.includes(f.group)) {
+        GROUP_ORDER.push(f.group)
+        GROUPS.push({ id: f.group, label: GROUP_LABELS[f.group] ?? f.group })
+      }
+    }
 
     // 防错：某个字段漏了 group 时，它在任何组里都不渲染 —— 加载时吼一嗓子，
     // 免得到界面上去才发现少了一项（吼完界面仍然没有它，改完务必人工数一遍）。
@@ -487,7 +141,10 @@ window.__ModuleLoader__.load({
       return raw == null ? '' : String(raw)
     }
 
-    /** 表单值 → 要写进设置的 JSON；数字不合法返回 undefined（拦住保存）。 */
+    /**
+     * 表单值 → 要写进设置的 JSON；数字不合法 / 越界返回 undefined（拦住保存）。
+     * 数字的边界来自 contract（min / max），与宿主半 normalize 的 clamp 同一套口径。
+     */
     function parse(field, raw) {
       if (field.kind === 'modelpool') return normalizeModelPool(raw)
       if (field.kind === 'list') {
@@ -499,9 +156,34 @@ window.__ModuleLoader__.load({
       if (field.kind === 'boolean') return raw === true
       if (field.kind === 'number') {
         const n = Number(raw)
-        return Number.isFinite(n) ? n : undefined
+        if (!Number.isFinite(n)) return undefined
+        if (field.min !== undefined && n < field.min) return undefined
+        if (field.max !== undefined && n > field.max) return undefined
+        return n
       }
       return String(raw == null ? '' : raw).trim()
+    }
+
+    /**
+     * 声明式输入校验：check 在 contract 里是纯数据（构建时可序列化），
+     * 这里按 rule 执行。返回 null = 通过，返回字符串 = 给用户看的提示。
+     */
+    function runFieldCheck(field, value) {
+      const check = field.check
+      if (!check) return null
+      const s = String(value ?? '').trim()
+      if (s === '') return null
+      if (check.rule === 'qq-number') return /^\d{5,12}$/.test(s) ? null : check.message
+      if (check.rule === 'credential-ref') {
+        if (/^(sk-|Bearer\s)/i.test(s) || s.length > 64 || /[.\s]/.test(s)) return check.message
+        return null
+      }
+      if (check.rule === 'cron-or-time') {
+        if (/^\d{1,2}:\d{2}$/.test(s)) return null
+        if (/^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(s)) return null
+        return check.message
+      }
+      return null
     }
 
     function draftFrom(value) {
@@ -1143,8 +825,9 @@ window.__ModuleLoader__.load({
           )
         } else {
           control = h('input', {
-            type: f.kind === 'number' ? 'number' : 'text',
+            type: f.kind === 'number' ? 'number' : f.secret ? 'password' : 'text',
             ...(f.step ? { step: f.step } : {}),
+            ...(f.secret ? { autoComplete: 'off' } : {}),
             style: S.input,
             value: String(value),
             disabled: !snap.writable || busy,
@@ -1182,7 +865,7 @@ window.__ModuleLoader__.load({
                 { style: S.hint },
                 // 会话下拉额外把真实 id 显示出来：看着名字选，但真要手抄/核对时 id 就在旁边
                 (f.kind === 'session' && String(value) !== '' ? `${f.hint}当前：${value}` : f.hint) +
-                  (typeof f.check === 'function' && f.check(value) ? `\n⚠️ ${f.check(value)}` : ''),
+                  (runFieldCheck(f, value) ? `\n⚠️ ${runFieldCheck(f, value)}` : ''),
               )
             : null,
         )

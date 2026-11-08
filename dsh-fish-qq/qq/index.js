@@ -1950,75 +1950,74 @@ const ModelPoolSlotSchema = Schema.object({
   modelName: Schema.string().default('').description('模型名，如 deepseek-chat；可先点「刷新拉取」从 /v1/models 选。'),
 })
 
-// @doc qq.settings
-export const Config = Schema.object({
-  targetSessionId: Schema.string().default('').description('固定目标会话 id；留空则用 settings 里的值。合并包开着 targetSessionFromFish 时，这一项会被 ~/.dsh-fish/home.json 里最新的 sessionId 覆盖（换房自动跟随）。'),
-  agentPreset: Schema.string().default('').description('resume 目标会话时挂载的 preset；留空沿用 header 记录。'),
+// ── 两个 schema 都由 settings-contract 生成（2026-11-08）──────────────────
+//
+// 一份 contract（qq/shared/settings-contract.js）同时喂给 Config 与
+// BridgeSettings：类型、默认值、描述、credential-ref 都从字段定义来。
+//
+// compositionOnly 的键不参与生成：它们的读取/回落有专有逻辑（targetSessionId
+// 跟鱼屋、workspaceRoot 读环境变量、agentPreset 透传 resume），仍在这里手写。
+
+/** 从 contract 的一个字段生成 Schemastery 节点。 */
+function schemaNodeForContract(f) {
+  const schema = f.schema ?? { type: 'string' }
+  let node
+  if (schema.type === 'array') {
+    node = Schema.array(schema.items === 'modelpool' ? ModelPoolSlotSchema : Schema.string())
+  } else if (schema.type === 'number') {
+    node = Schema.number()
+  } else if (schema.type === 'boolean') {
+    node = Schema.boolean()
+  } else {
+    node = Schema.string()
+  }
+  if (schema.role) node = node.role(schema.role)
+  return node.default(f.default).description(f.hint)
+}
+
+/**
+ * 由一份 contract 生成设置 Schema。
+ * compositionOnly 的键跳过 —— 由调用方把手写节点并进来。
+ *
+ * @param {ReadonlyArray<object>} fields
+ */
+function buildSchemaFromContract(fields = SETTINGS_CONTRACT) {
+  const dict = {}
+  for (const f of fields) {
+    if (f.compositionOnly) continue
+    dict[f.key] = schemaNodeForContract(f)
+  }
+  return Schema.object(dict)
+}
+
+/** Config 独有的装配/传输键（不在用户设置卡片里）。 */
+const CONFIG_ONLY_SCHEMA = {
   statePath: Schema.string().default('').description('状态文件路径；留空 = $DSH_HOME/qq-bridge-state.json'),
-  workspaceRoot: Schema.string().default('').description('工作区根目录：她派任务、看目录、发文件都限定在这里；留空 = 这些能力不可用。'),
   debugTools: Schema.boolean().default(true).description('注册 qq_bridge_* 调试工具。'),
   debugToolsInWorkspace: Schema.boolean().default(false).description('合并包（dsh-fish-qq）专用：是否把 QQ 管理/调试工具也注册给 DSH 工作区。默认 false = 用户工作区保持原生工具面（会话级隔离，2026-11-08）。'),
-  // ── M2：OneBot 传输 ────────────────────────────────────────────────────────
-  onebotUrl: Schema.string().default('').description('NapCat 的正向 WS 地址，如 ws://127.0.0.1:3001；留空 = 不启用传输。'),
-  accessTokenEnv: Schema.string().default('').role('credential-ref').description('存放 access_token 的凭据引用名（环境变量名），经 ctx.credentials 解析；不要明文写 token。'),
-  selfId: Schema.string().default('').description('机器人自己的 QQ 号；留空则连上后调 get_login_info 自动获取。'),
-  replyWithQuote: Schema.boolean().default(false).description('回复时引用触发那条消息（[CQ:reply]）。'),
-  atOnlyInGroup: Schema.boolean().default(false).description('群里只有被 @ 才处理（比概率唤醒更严的闸门）。'),
-  stripMarkdown: Schema.boolean().default(true).description('出站前去掉 Markdown 标记（QQ 不渲染）。'),
-  replyMode: Schema.string().default('marker').description("出站方式：'marker'（默认，只发 [QQ]…[/QQ] 块里的内容）｜'tool'（不用标记块，改由 qq_bridge_send 工具发送）｜'always'（整轮回复都发，旧行为）。"),
-  delivery: Schema.string().default('auto').description("QQ 消息怎么投递给目标会话：'auto'（默认，**目标正忙就插话** steer、空闲时排队）｜'followup'（永远排队成独立一轮）｜'steer'（永远插话）。"),
-  visionModel: Schema.string().default('').description('用来给图片写描述的多模态模型，"provider/model"；留空 = 自动找第一个支持图片输入的模型。'),
   heartbeatTimeoutMs: Schema.number().default(90000).description('多久没有任何 WS 流量就判定连接已死并重连。'),
-  // ── M5：NapCat 自助托管 ───────────────────────────────────────────────────
-  // 注意：这些只是**参数**；插件加载时绝不下载或执行任何东西，
-  // 一切都要靠显式调用 qq_bridge_napcat 工具。
-  napcatInstallDir: Schema.string().default('').description('NapCat 安装目录；留空 = $DSH_HOME/napcat。'),
-  napcatVersion: Schema.string().default('').description('要装的 NapCat 版本 tag（如 v4.18.28）；留空 = 最新。'),
   napcatAsset: Schema.string().default(DEFAULT_ASSET).description('要下载的发行资产名。'),
-  downloadProxy: Schema.string().default('').description('下载用的 HTTP 代理（如 http://127.0.0.1:7890）；留空 = 读环境变量，再不行直连。'),
-  onebotPort: Schema.number().default(3001).description('写进 NapCat 配置、并用来连的正向 WS 端口。'),
-  qqNumber: Schema.string().default('').description('快速登录用的 QQ 号（需先成功登录过一次）。'),
-  // 以下是 settings 命名空间的 composition base（装好的默认值）：
-  // 设置界面里的用户层会覆盖它们。
-  nicknames: Schema.array(Schema.string()).default(['244']),
-  wakeProbability: Schema.number().default(0.05),
-  privateWakeProbability: Schema.number().default(1),
-  whitelist: Schema.array(Schema.string()).default([]),
-  groupWhitelist: Schema.array(Schema.string()).default([]),
-  // 管理员名单（2026-10-29）：与 whitelist 同一种存储，只是管理权限更高一档
-  admins: Schema.array(Schema.string()).default([]),
-  // 认主 + 主动私聊（2026-10-26）
-  ownerQQ: Schema.string().default('').description('主人 QQ 号。主人发来的话原样进会话；其他人也进，但正文前会加一行「非主人」标记，只许聊天、不许派活。留空 = 谁都不是主人（fail-closed）。'),
-  proactiveEnabled: Schema.boolean().default(PROACTIVE_DEFAULTS.enabled).description('主动私聊总开关。打开后，空闲够久 + 随机命中时，她会主动给主人发一条 QQ 私聊。默认关。'),
-  proactiveIdleHours: Schema.number().default(PROACTIVE_DEFAULTS.idleHours).description(`多久没有任何 QQ 往来才算「空闲」（小时）。默认 ${PROACTIVE_DEFAULTS.idleHours}。`),
-  proactiveProbability: Schema.number().default(PROACTIVE_DEFAULTS.probability).description(`每次扫描命中主动私聊的概率（0–1）。默认 ${PROACTIVE_DEFAULTS.probability}；想更克制就调小。`),
-  proactiveDailyLimit: Schema.number().default(PROACTIVE_DEFAULTS.dailyLimit).description(`每天最多主动私聊几条。默认 ${PROACTIVE_DEFAULTS.dailyLimit}；0 = 不发。`),
-  proactiveScanIntervalMinutes: Schema.number().default(PROACTIVE_DEFAULTS.scanIntervalMinutes).description(`多久扫描一次「该不该主动说话」（分钟）。默认 ${PROACTIVE_DEFAULTS.scanIntervalMinutes}。`),
-  // ── 私人时间 / 自主待机（2026-10-31）：空闲够久 + 随机抽签 + 高频沉默 ──
-  idleTriggerEnabled: Schema.boolean().default(IDLE_TRIGGER_DEFAULTS.enabled).description('「私人时间」总开关。打开后，很久没人找她时，会随机抽签给她一段属于自己的时间——大概率什么都不发生（silent 权重最高），极少注入一段处境提示。默认关。'),
-  idleTriggerScanIntervalMinutes: Schema.number().default(IDLE_TRIGGER_DEFAULTS.scanIntervalMinutes).description(`多久扫描一次「该不该给她一段私人时间」（分钟）。默认 ${IDLE_TRIGGER_DEFAULTS.scanIntervalMinutes}；这只是判定周期，不是定时打扰。`),
-  idleTriggerMinIdleHours: Schema.number().default(IDLE_TRIGGER_DEFAULTS.minIdleHours).description(`多久没人找她（QQ 来人或 DSH 界面说话）才算「空闲」（小时）。默认 ${IDLE_TRIGGER_DEFAULTS.minIdleHours}；0 = 不看空闲（调试用）。`),
-  idleTriggerDailyMax: Schema.number().default(IDLE_TRIGGER_DEFAULTS.dailyMax).description(`每天最多真的注入几段「私人时间」（抽到 silent 不算）。默认 ${IDLE_TRIGGER_DEFAULTS.dailyMax}；0 = 关闭。`),
-  idleTriggerWeightSilent: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.silent).description(`抽签权重：什么都不做、继续停机。**必须占绝对优势**（默认 ${IDLE_TRIGGER_DEFAULTS.weights.silent}）。`),
-  idleTriggerWeightMessage: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.message).description(`抽签权重：提示里把「给他发条消息」排在最前（仍由她选）。默认 ${IDLE_TRIGGER_DEFAULTS.weights.message}。`),
-  idleTriggerWeightBrowse: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.browse).description(`抽签权重：提示里把「去 B 站看看」排在最前。默认 ${IDLE_TRIGGER_DEFAULTS.weights.browse}。`),
-  idleTriggerWeightDiary: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.diary).description(`抽签权重：提示里把「写写日记」排在最前。默认 ${IDLE_TRIGGER_DEFAULTS.weights.diary}。`),
-  // ── subsend：主人点名发给谁（2026-10-26）
-  subsendEnabled: Schema.boolean().default(SUBSEND_DEFAULTS.enabled).description('主人发 `subsend <QQ号> <内容>` 时，把内容私聊给指定的人。默认开。'),
-  subsendDailyLimit: Schema.number().default(SUBSEND_DEFAULTS.dailyLimit).description(`subsend 每天最多发几条（防刷屏 / 防 QQ 风控）。默认 ${SUBSEND_DEFAULTS.dailyLimit}；0 = 禁用。`),
-  subsendCooldownSeconds: Schema.number().default(SUBSEND_DEFAULTS.cooldownSeconds).description(`subsend 两次发送之间的最短间隔（秒）。默认 ${SUBSEND_DEFAULTS.cooldownSeconds}。`),
-  // ── checklog 通知（任务完成日志，2026-10-28）：只立字段，发送逻辑后面接 ──
-  checklogNotifyMode: Schema.string().default(CHECKLOG_NOTIFY_DEFAULTS.mode).description("CheckLogs/ 里写了任务完成日志后怎么通知：'off'（默认，什么都不说）｜'system'（插件直接发一条系统模板）｜'agent'（投到她那条会话，让她用自己的话说；她没写就退回模板）。"),
-  checklogNotifyOnSuccess: Schema.boolean().default(CHECKLOG_NOTIFY_DEFAULTS.onSuccess).description('任务**成功**完成时也通知；默认关 = 只在失败 / 异常结束时才说一声。'),
-  checklogNotifyDailyLimit: Schema.number().default(CHECKLOG_NOTIFY_DEFAULTS.dailyLimit).description(`每天最多通知几条。默认 ${CHECKLOG_NOTIFY_DEFAULTS.dailyLimit}；0 = 不发。`),
-  checklogNotifyTarget: Schema.string().default(CHECKLOG_NOTIFY_DEFAULTS.target).description("通知发给谁：'owner'（默认，主人的 QQ 私聊）｜'last'（最近一次有来往的目的地，群或私聊）。"),
-  // ── 模型池（2026-11-03）：3 个固定槽位，给摘要这种短任务用 ──
-  modelPool: Schema.array(ModelPoolSlotSchema).default([]).description('模型池：3 个固定槽位（Slot 1/2/3）。摘要优先用第一个「已启用且填全」的槽位；失败/超时回退宿主 llm。'),
-  // ── 环境传感器（2026-11-01；2026-11-02 改为文件驱动）：定时采集 → sensors/status.md → 她自己用 check_body 读 ──
-  envSensorEnabled: Schema.boolean().default(ENV_SENSOR_DEFAULTS.enabled).description('环境传感器总开关。打开后，按 envSensorTime 的时间抓一次天气与本机状态，覆盖写入工作区的 sensors/status.md。**不再注入提示词**——她自己想感知时调 check_body 查看。默认关。'),
-  envWeatherCity: Schema.string().default(ENV_SENSOR_DEFAULTS.city).description('城市名（wuhan / 武汉）或「纬度,经度」（30.59,114.30）；留空 = 状态里只有本机，没有天气。'),
-  envSensorTime: Schema.string().default(ENV_SENSOR_DEFAULTS.time).description('多久采一次并刷新状态文件：五段式 Cron（分 时 日 月 周，如 0 8 * * * = 每天早八点），也接受 HH:MM（如 08:00）。默认 */15 * * * *（每 15 分钟）。'),
-  envMemoryThreshold: Schema.number().default(ENV_SENSOR_DEFAULTS.memoryThreshold).description(`内存占用报警阈值（0–100）：超过的话状态里的 [机箱状态] 就是「高负载」。默认 ${ENV_SENSOR_DEFAULTS.memoryThreshold}。`),
+}
+
+/** Config 里的 3 个 composition-only 键（描述沿用原来的 composition 口径）。 */
+const CONFIG_COMPOSITION_SCHEMA = {
+  targetSessionId: Schema.string().default('').description('固定目标会话 id；留空则用 settings 里的值。合并包开着 targetSessionFromFish 时，这一项会被 ~/.dsh-fish/home.json 里最新的 sessionId 覆盖（换房自动跟随）。'),
+  workspaceRoot: Schema.string().default('').description('工作区根目录：她派任务、看目录、发文件都限定在这里；留空 = 这些能力不可用。'),
+  agentPreset: Schema.string().default('').description('resume 目标会话时挂载的 preset；留空沿用 header 记录。'),
+}
+
+/** BridgeSettings 里的 3 个 composition-only 键（描述沿用原来的设置页口径）。 */
+const BRIDGE_COMPOSITION_SCHEMA = {
+  targetSessionId: Schema.string().default('').description('固定目标会话 id —— 决定"在跟哪个会话说话"；留空 = 不驱动任何会话。'),
+  workspaceRoot: Schema.string().default('').description('工作区根目录：她派任务、看目录、发文件都限定在这里。填绝对路径，例如 D:\\demo\\我的项目；留空 = 这些能力不可用。'),
+  agentPreset: Schema.string().default('').description('resume 目标会话时挂载的 agent preset；留空 = 沿用会话 header 里记录的。'),
+}
+
+// @doc qq.settings
+export const Config = Schema.object({
+  ...buildSchemaFromContract().dict,
+  ...CONFIG_COMPOSITION_SCHEMA,
+  ...CONFIG_ONLY_SCHEMA,
 })
 
 // 用户可编辑设置：注册成 settings 命名空间后，会持久化到 settings.yaml，
@@ -2028,84 +2027,10 @@ export const Config = Schema.object({
 // 没有描述就只剩一个裸键名，用户根本不知道该怎么填（M3）。
 // @doc qq.settings
 const BridgeSettings = Schema.object({
-  targetSessionId: Schema.string().default('').description('固定目标会话 id —— 决定"在跟哪个会话说话"；留空 = 不驱动任何会话。'),
-  workspaceRoot: Schema.string().default('').description('工作区根目录：她派任务、看目录、发文件都限定在这里。填绝对路径，例如 D:\\demo\\我的项目；留空 = 这些能力不可用。'),
-  nicknames: Schema.array(Schema.string()).default(['244']).description('叫到这些名字必然唤醒；可加多个（如 244、小助手）。'),
-  wakeProbability: Schema.number().default(0.05).description('**群聊**里既没被 @、也没叫名字时的唤醒概率（0–1）。默认 0.05 = 5%；嫌吵/嫌耗 token 就调小。'),
-  privateWakeProbability: Schema.number().default(1).description('**私聊**里既没被 @、也没叫名字时的唤醒概率（0–1）。默认 1 = 每条都回（私聊是有人专门找你说话）。'),
-  whitelist: Schema.array(Schema.string()).default([]).description('允许唤醒的**私聊** QQ 号；空 = 谁都不能唤醒（fail-closed）。'),
-  groupWhitelist: Schema.array(Schema.string()).default([]).description('允许唤醒的**群**号；空 = 任何群都不唤醒。'),
-  admins: Schema.array(Schema.string()).default([]).description('**管理员** QQ 号列表（2026-10-29）。管理员发来的消息贴「[来源：管理员用户]」标记：可以聊天、可以让她派活（work_request）、能用 fileget / filesend；subsend / whitelist / admin 仍然只有主人（ownerQQ）能下。用 QQ 上的 `admin add/del <QQ号>` 也能改这份名单（只有主人能改）。'),
-  attachRecentChat: Schema.boolean().default(true).description('唤醒时，是否把"未唤醒期间"的聊天记录一并附上。'),
-  recentChatLimit: Schema.number().default(DEFAULT_RECENT_CHAT_LIMIT).description('上面那段摘要最多带最近几条（0–200）。'),
-  replyMaxChars: Schema.number().default(1500).description('出站文本的字数上限（下限 100）；超过就不发送，请缩短后重发。'),
-  // M2
-  onebotUrl: Schema.string().default('').description('NapCat 的正向 WS 地址，如 ws://127.0.0.1:3001；留空 = 完全不启用传输。'),
-  accessTokenEnv: Schema.string().default('').role('credential-ref').description('access_token 所在的**凭据引用名**（环境变量名）；别写明文 token。'),
-  selfId: Schema.string().default('').description('机器人自己的 QQ 号；留空 = 连上后自动获取。'),
-  replyWithQuote: Schema.boolean().default(false).description('回复时引用触发的那条消息。'),
-  atOnlyInGroup: Schema.boolean().default(false).description('群里只有被 @ 才处理（比概率唤醒更严的闸门）。'),
-  stripMarkdown: Schema.boolean().default(true).description('出站前去掉 Markdown 标记（QQ 不渲染）。'),
-  replyMode: Schema.string().default('marker').description("出站闸门（开关）：'marker' = 标记块发送（默认）｜'tool' = **关掉标记块**，改用 qq_bridge_send 工具发送｜'always' = 整轮都发（旧行为，慎用）。"),
-  delivery: Schema.string().default('auto').description("投递方式：'auto' = 目标正忙时**插话**（steer）、空闲时排队（默认，最像群聊）｜'followup' = 永远排队成独立一轮｜'steer' = 永远插话。"),
-  visionModel: Schema.string().default('').description('给图片写描述的多模态模型，形如 provider/model；留空 = 自动找第一个支持图片输入的模型。'),
-  agentPreset: Schema.string().default('').description('resume 目标会话时挂载的 agent preset；留空 = 沿用会话 header 里记录的。'),
-  // M5
-  napcatInstallDir: Schema.string().default('').description('NapCat 安装目录；留空 = $DSH_HOME/napcat。'),
-  napcatVersion: Schema.string().default('').description('要下载的 NapCat 版本 tag（如 v4.18.28）；留空 = 最新。'),
-  downloadProxy: Schema.string().default('').description('下载 NapCat 用的 HTTP 代理（如 http://127.0.0.1:7890）；留空 = 读环境变量，再不行直连。'),
-  onebotPort: Schema.number().default(3001).description('写进 NapCat 配置、并用来连的正向 WS 端口。'),
-  qqNumber: Schema.string().default('').description('快速登录用的 QQ 号（需先成功登录过一次）。'),
-  // ── 认主（2026-10-26）──
-  ownerQQ: Schema.string().default('').description('主人 QQ 号。主人发来的话原样进会话；其他人也进，但正文前会加一行「非主人」标记，只许聊天、不许派活。留空 = 谁都不是主人（fail-closed）。'),
-  // ── 不定时主动私聊（2026-10-26）──
-  proactiveEnabled: Schema.boolean().default(PROACTIVE_DEFAULTS.enabled).description('主动私聊总开关。打开后，空闲够久 + 随机命中时，她会主动给主人发一条 QQ 私聊。默认关。'),
-  proactiveIdleHours: Schema.number().default(PROACTIVE_DEFAULTS.idleHours).description(`多久没有任何 QQ 往来才算「空闲」（小时）。默认 ${PROACTIVE_DEFAULTS.idleHours}。`),
-  proactiveProbability: Schema.number().default(PROACTIVE_DEFAULTS.probability).description(`每次扫描命中主动私聊的概率（0–1）。默认 ${PROACTIVE_DEFAULTS.probability}；想更克制就调小。`),
-  proactiveDailyLimit: Schema.number().default(PROACTIVE_DEFAULTS.dailyLimit).description(`每天最多主动私聊几条。默认 ${PROACTIVE_DEFAULTS.dailyLimit}；0 = 不发。`),
-  proactiveScanIntervalMinutes: Schema.number().default(PROACTIVE_DEFAULTS.scanIntervalMinutes).description(`多久扫描一次「该不该主动说话」（分钟）。默认 ${PROACTIVE_DEFAULTS.scanIntervalMinutes}。`),
-  // ── 私人时间 / 自主待机（2026-10-31）：空闲够久 + 随机抽签 + 高频沉默 ──
-  idleTriggerEnabled: Schema.boolean().default(IDLE_TRIGGER_DEFAULTS.enabled).description('「私人时间」总开关。很久没人找她时，会随机抽签给她一段属于自己的时间——大概率什么都不发生（silent 权重最高），极少注入一段处境提示。注入的那一轮默认**不出站**（Ghost Mode）：只有她明确写了 [QQ] 块或调了出站工具，消息才会到 QQ；她写日记 / 刷 B 站 / 发呆都留给她自己。默认关。'),
-  idleTriggerScanIntervalMinutes: Schema.number().default(IDLE_TRIGGER_DEFAULTS.scanIntervalMinutes).description(`多久扫描一次「该不该给她一段私人时间」（分钟）。默认 ${IDLE_TRIGGER_DEFAULTS.scanIntervalMinutes}；这只是判定周期，不是定时打扰。`),
-  idleTriggerMinIdleHours: Schema.number().default(IDLE_TRIGGER_DEFAULTS.minIdleHours).description(`多久没人找她（QQ 来人或 DSH 界面说话）才算「空闲」（小时）。默认 ${IDLE_TRIGGER_DEFAULTS.minIdleHours}；0 = 不看空闲（调试用）。`),
-  idleTriggerDailyMax: Schema.number().default(IDLE_TRIGGER_DEFAULTS.dailyMax).description(`每天最多真的注入几段「私人时间」（抽到 silent 不算）。默认 ${IDLE_TRIGGER_DEFAULTS.dailyMax}；0 = 关闭。`),
-  idleTriggerWeightSilent: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.silent).description(`抽签权重：什么都不做、继续停机。**必须占绝对优势**（默认 ${IDLE_TRIGGER_DEFAULTS.weights.silent}）——她绝大部分时间就是在睡着。`),
-  idleTriggerWeightMessage: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.message).description(`抽签权重：提示里把「给他发条消息」排在最前（仍由她选）。默认 ${IDLE_TRIGGER_DEFAULTS.weights.message}。`),
-  idleTriggerWeightBrowse: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.browse).description(`抽签权重：提示里把「去 B 站看看」排在最前。默认 ${IDLE_TRIGGER_DEFAULTS.weights.browse}。`),
-  idleTriggerWeightDiary: Schema.number().default(IDLE_TRIGGER_DEFAULTS.weights.diary).description(`抽签权重：提示里把「写写日记」排在最前。默认 ${IDLE_TRIGGER_DEFAULTS.weights.diary}。`),
-  // ── subsend：主人点名发给谁（2026-10-26）──
-  subsendEnabled: Schema.boolean().default(SUBSEND_DEFAULTS.enabled).description('主人发 `subsend <QQ号> <内容>` 时，把内容私聊给指定的人（她调 qq_bridge_subsend 工具发，可润色）。默认开。'),
-  subsendDailyLimit: Schema.number().default(SUBSEND_DEFAULTS.dailyLimit).description(`subsend 每天最多发几条（防刷屏 / 防 QQ 风控）。默认 ${SUBSEND_DEFAULTS.dailyLimit}；0 = 禁用。`),
-  subsendCooldownSeconds: Schema.number().default(SUBSEND_DEFAULTS.cooldownSeconds).description(`subsend 两次发送之间的最短间隔（秒）。默认 ${SUBSEND_DEFAULTS.cooldownSeconds}。`),
-  // ── checklog 通知（任务完成日志，2026-10-28）──
-  // 任务做完了要不要、以什么方式说一声。⚠️ 任务书 1 只立字段：mode='off' 时
-  // 什么都不发生，发送逻辑在后面的任务里接；卡片输入框统一放任务书 6 手改。
-  checklogNotifyMode: Schema.string().default(CHECKLOG_NOTIFY_DEFAULTS.mode).description("CheckLogs/ 里写了任务完成日志后怎么通知：'off'（默认，什么都不说）｜'system'（插件直接发一条系统模板）｜'agent'（投到她那条会话，让她用自己的话说；她没写就退回模板）。"),
-  checklogNotifyOnSuccess: Schema.boolean().default(CHECKLOG_NOTIFY_DEFAULTS.onSuccess).description('任务**成功**完成时也通知；默认关 = 只在失败 / 异常结束时才说一声（成功是本分，不用报）。'),
-  checklogNotifyDailyLimit: Schema.number().default(CHECKLOG_NOTIFY_DEFAULTS.dailyLimit).description(`每天最多通知几条（防刷屏 / 防 QQ 风控）。默认 ${CHECKLOG_NOTIFY_DEFAULTS.dailyLimit}；0 = 不发。`),
-  checklogNotifyTarget: Schema.string().default(CHECKLOG_NOTIFY_DEFAULTS.target).description("通知发给谁：'owner'（默认，主人的 QQ 私聊）｜'last'（最近一次有来往的目的地，群或私聊）。"),
-  // ── 情报流水线（预留，2026-11-01）：先立字段，逻辑（RSS 抓取 / worker 对接）
-  //    由后面的任务接 —— 与 checklog 通知「任务书 1 只立字段」同一个口径：键先
-  //    立着，默认全空 = 什么都不发生。
-  //    ⚠️ 必须**同时** knownSettingKeys（= 本 schema 的 dict）与 readSettings()
-  //    都认这三个键，否则卡片保存时被静默丢掉、读取时又拿不回来 —— 用户看到
-  //    「已保存」其实没存进去（设了也白设）。
-  rssFeeds: Schema.string().default('').description('情报流水线的 RSS 订阅源，逗号分隔的链接；流水线逻辑还没接上，先存着。'),
-  pipelineWorkerApi: Schema.string().default('').description('情报流水线 worker 的 API 地址；留空 = 还没部署。'),
-  pipelineWorkerKey: Schema.string().default('').description('情报流水线 worker 的调用校验密钥；留空 = 不校验。'),
-  // ── 模型池（2026-11-03）：3 个固定槽位 ──
-  // ⚠️ 必须同时出现在 knownSettingKeys（= 本 schema 的 dict）与 readSettings() 里，
-  // 否则卡片保存时被静默丢掉、读取时又拿不回来（与流水线字段同一个坑）。
-  modelPool: Schema.array(ModelPoolSlotSchema).default([]).description('模型池：3 个固定槽位（Slot 1/2/3）。每个槽位可填 API 地址、Key、模型名，并测试连通；摘要优先用第一个启用的槽位。'),
-  // ── 环境传感器 / 赛博微状态（2026-11-01；2026-11-02 改为文件驱动）──────────
-  // 与上面流水线那三个键同一套口径：键先立着，schema、readSettings、客户端
-  // FIELDS 三处必须**同时**认，否则卡片保存后值被静默丢掉（设了也白设）。
-  // 默认 enabled=false —— 不打开什么都不发生。
-  envSensorEnabled: Schema.boolean().default(ENV_SENSOR_DEFAULTS.enabled).description('环境传感器总开关。打开后，按下面设的时间抓一次天气与本机硬件状态，覆盖写成工作区里的一行状态（sensors/status.md）。**不再注入提示词**——她想感知时自己调 check_body 查看。默认关。'),
-  envWeatherCity: Schema.string().default(ENV_SENSOR_DEFAULTS.city).description('城市名（wuhan / 武汉）或「纬度,经度」（30.59,114.30）；留空 = 状态里只有本机，没有天气。'),
-  envSensorTime: Schema.string().default(ENV_SENSOR_DEFAULTS.time).description('多久采一次并刷新状态：五段式 Cron（分 时 日 月 周，如 0 8 * * * = 每天早八点），也接受 HH:MM（如 08:00）。默认每 15 分钟。到点会跑一次采集脚本，写出的状态文件供她自己读取。'),
-  envMemoryThreshold: Schema.number().default(ENV_SENSOR_DEFAULTS.memoryThreshold).description(`内存占用报警阈值（0–100）：超过的话状态里的 [机箱状态] 就是「高负载」。默认 ${ENV_SENSOR_DEFAULTS.memoryThreshold}。`),
+  ...buildSchemaFromContract().dict,
+  ...BRIDGE_COMPOSITION_SCHEMA,
 })
+
 
 // ── 合并转发（2026-10-28）──────────────────────────────────────────────────────
 //
@@ -2792,136 +2717,65 @@ export function apply(ctx, config) {
     // 每次读设置都会重新读一次 home.json（fishTalkSessionId 是同步读盘，没有缓存）：
     // 合并包里「目标会话」永远跟着鱼的屋子走，换房后的下一条消息就路由到新会话。
     const fishId = fromFish ? fishTalkSessionId() : ''
-    return {
-      // 合并包：目标会话**优先**用大肥鱼屋子里的当前 sessionId（见 resolveTargetSessionId）。
-      // 独立安装（没有 targetSessionFromFish）时行为完全不变：设置值 > config > 空。
-      targetSessionId: resolveTargetSessionId({
-        stored: s.targetSessionId,
-        configId: config.targetSessionId,
-        fishId,
-        fromFish,
-      }),
-      // 工作区根目录：设置页可改；留空 = 派活/看目录/发文件这些能力如实说没配。
-      workspaceRoot: String(s.workspaceRoot ?? config.workspaceRoot ?? process.env.DSH_FISH_WORKSPACE ?? '').trim(),
-      // 下面每一行都必须回落到 `config`：新模型下用户的值就在 config 里，
-      // 只回落到硬编码默认值会把用户配置悄悄丢掉（如昵称、群白名单）。
-      nicknames: (s.nicknames ?? config.nicknames ?? ['244']).map((n) => String(n)).filter((n) => n !== ''),
-      wakeProbability: clamp01(Number(s.wakeProbability ?? config.wakeProbability ?? 0.05)),
-      privateWakeProbability: clamp01(Number(s.privateWakeProbability ?? config.privateWakeProbability ?? 1)),
-      whitelist: (s.whitelist ?? config.whitelist ?? []).map(String),
-      groupWhitelist: (s.groupWhitelist ?? config.groupWhitelist ?? []).map(String),
-      // 管理员名单（2026-10-29）：与白名单同一处读；trim 是为了兜住手改设置文件时
-      // 可能混进来的空白，空白项直接丢掉（身份判定是精确匹配，留它没意义）。
-      admins: (s.admins ?? config.admins ?? [])
-        .map((x) => String(x ?? '').trim())
-        .filter((x) => x !== ''),
-      attachRecentChat: (s.attachRecentChat ?? config.attachRecentChat) !== false,
-      recentChatLimit: Math.max(
-        0,
-        Math.min(200, Number(s.recentChatLimit ?? config.recentChatLimit ?? DEFAULT_RECENT_CHAT_LIMIT)),
-      ),
-      replyMaxChars: Math.max(100, Number(s.replyMaxChars ?? config.replyMaxChars ?? 1500)),
-      onebotUrl: String(s.onebotUrl ?? config.onebotUrl ?? '').trim(),
-      accessTokenEnv: String(s.accessTokenEnv ?? config.accessTokenEnv ?? '').trim(),
-      selfId: String(s.selfId ?? config.selfId ?? '').trim(),
-      replyWithQuote: (s.replyWithQuote ?? config.replyWithQuote) === true,
-      atOnlyInGroup: (s.atOnlyInGroup ?? config.atOnlyInGroup) === true,
-      stripMarkdown: (s.stripMarkdown ?? config.stripMarkdown) !== false,
-      replyMode: CONTRACT_MAP.replyMode.normalize(s.replyMode ?? config.replyMode),
-      delivery: CONTRACT_MAP.delivery.normalize(s.delivery ?? config.delivery),
-      visionModel: String(s.visionModel ?? config.visionModel ?? '').trim(),
-      agentPreset: String(s.agentPreset ?? config.agentPreset ?? '').trim(),
-      heartbeatTimeoutMs: Math.max(10000, Number(config.heartbeatTimeoutMs ?? 90000)),
-      napcatInstallDir: String(s.napcatInstallDir ?? config.napcatInstallDir ?? '').trim(),
-      napcatVersion: String(s.napcatVersion ?? config.napcatVersion ?? '').trim(),
-      downloadProxy: String(s.downloadProxy ?? config.downloadProxy ?? '').trim(),
-      onebotPort: Math.max(1, Math.min(65535, Number(s.onebotPort ?? config.onebotPort ?? 3001))),
-      qqNumber: String(s.qqNumber ?? config.qqNumber ?? '').trim(),
-      // 认主：只收数字（QQ 号），别的字符一律忽略；空 = 没配主人
-      ownerQQ: String(s.ownerQQ ?? config.ownerQQ ?? '').replace(/\D/g, ''),
-      // 主动私聊：范围与默认值都收在这里，别让坏值穿透到扫描循环
-      proactiveEnabled: (s.proactiveEnabled ?? config.proactiveEnabled ?? PROACTIVE_DEFAULTS.enabled) === true,
-      proactiveIdleHours: Math.max(
-        0,
-        Math.min(720, Number(s.proactiveIdleHours ?? config.proactiveIdleHours ?? PROACTIVE_DEFAULTS.idleHours) || 0),
-      ),
-      proactiveProbability: clamp01(
-        Number(s.proactiveProbability ?? config.proactiveProbability ?? PROACTIVE_DEFAULTS.probability),
-      ),
-      proactiveDailyLimit: Math.max(
-        0,
-        Math.min(50, Math.round(Number(s.proactiveDailyLimit ?? config.proactiveDailyLimit ?? PROACTIVE_DEFAULTS.dailyLimit) || 0)),
-      ),
-      proactiveScanIntervalMinutes: Math.max(
-        1,
-        Math.min(1440, Number(s.proactiveScanIntervalMinutes ?? config.proactiveScanIntervalMinutes ?? PROACTIVE_DEFAULTS.scanIntervalMinutes) || 0),
-      ),
-      // 私人时间（2026-10-31）：同一套口径——坏值不许穿透到扫描循环。
-      // 权重单独走 normalizeIdleWeights（非负有限数，全 0 时抽签退回 silent）。
-      idleTriggerEnabled: (s.idleTriggerEnabled ?? config.idleTriggerEnabled ?? IDLE_TRIGGER_DEFAULTS.enabled) === true,
-      idleTriggerScanIntervalMinutes: Math.max(
-        1,
-        Math.min(
-          1440,
-          Number(s.idleTriggerScanIntervalMinutes ?? config.idleTriggerScanIntervalMinutes ?? IDLE_TRIGGER_DEFAULTS.scanIntervalMinutes) || 0,
-        ),
-      ),
-      idleTriggerMinIdleHours: Math.max(
-        0,
-        Math.min(720, Number(s.idleTriggerMinIdleHours ?? config.idleTriggerMinIdleHours ?? IDLE_TRIGGER_DEFAULTS.minIdleHours) || 0),
-      ),
-      idleTriggerDailyMax: Math.max(
-        0,
-        Math.min(50, Math.round(Number(s.idleTriggerDailyMax ?? config.idleTriggerDailyMax ?? IDLE_TRIGGER_DEFAULTS.dailyMax) || 0)),
-      ),
-      idleWeights: normalizeIdleWeights({
-        silent: s.idleTriggerWeightSilent ?? config.idleTriggerWeightSilent ?? IDLE_TRIGGER_DEFAULTS.weights.silent,
-        message: s.idleTriggerWeightMessage ?? config.idleTriggerWeightMessage ?? IDLE_TRIGGER_DEFAULTS.weights.message,
-        browse: s.idleTriggerWeightBrowse ?? config.idleTriggerWeightBrowse ?? IDLE_TRIGGER_DEFAULTS.weights.browse,
-        diary: s.idleTriggerWeightDiary ?? config.idleTriggerWeightDiary ?? IDLE_TRIGGER_DEFAULTS.weights.diary,
-      }),
-      // subsend：只认安全范围内的值 —— 限流是安全属性，坏值不许穿透
-      subsendEnabled: (s.subsendEnabled ?? config.subsendEnabled ?? SUBSEND_DEFAULTS.enabled) === true,
-      subsendDailyLimit: Math.max(
-        0,
-        Math.min(500, Math.round(Number(s.subsendDailyLimit ?? config.subsendDailyLimit ?? SUBSEND_DEFAULTS.dailyLimit) || 0)),
-      ),
-      subsendCooldownSeconds: Math.max(
-        0,
-        Math.min(3600, Number(s.subsendCooldownSeconds ?? config.subsendCooldownSeconds ?? SUBSEND_DEFAULTS.cooldownSeconds) || 0),
-      ),
-      // checklog 通知（2026-10-28）：范围与默认值都收在这里，坏值不许穿透到发送路径。
-      // ⚠️ 任务书 1 只立字段：mode='off'（默认）时后面接的逻辑必须什么都不做。
-      checklogNotifyMode: CONTRACT_MAP.checklogNotifyMode.normalize(s.checklogNotifyMode ?? config.checklogNotifyMode),
-      checklogNotifyOnSuccess:
-        (s.checklogNotifyOnSuccess ?? config.checklogNotifyOnSuccess ?? CHECKLOG_NOTIFY_DEFAULTS.onSuccess) === true,
-      checklogNotifyDailyLimit: normalizeChecklogNotifyDailyLimit(
-        s.checklogNotifyDailyLimit ?? config.checklogNotifyDailyLimit ?? CHECKLOG_NOTIFY_DEFAULTS.dailyLimit,
-      ),
-      checklogNotifyTarget: normalizeChecklogNotifyTarget(s.checklogNotifyTarget ?? config.checklogNotifyTarget),
-      // 情报流水线（预留，2026-11-01）：还没有任何逻辑读它们，但**必须**列在这里 ——
-      // 不列的话卡片保存后 GET 回来是空串（设了也白设）；schema 那边立了同三个键。
-      rssFeeds: String(s.rssFeeds ?? config.rssFeeds ?? '').trim(),
-      pipelineWorkerApi: String(s.pipelineWorkerApi ?? config.pipelineWorkerApi ?? '').trim(),
-      pipelineWorkerKey: String(s.pipelineWorkerKey ?? config.pipelineWorkerKey ?? '').trim(),
-      // 模型池（2026-11-03）：固定 3 槽；坏值收敛成空槽，不把界面/摘要路径搞崩。
-      modelPool: normalizeModelPool(s.modelPool ?? config.modelPool),
-      // 环境传感器（2026-11-01；2026-11-02 改为文件驱动）：同一套坏值兜底口径——
-      // 阈值不合法就回落默认，城市只 trim 不过滤（地名里可以有逗号/冒号，
-      // 真正的解析在采集脚本里）。
-      envSensorEnabled: (s.envSensorEnabled ?? config.envSensorEnabled ?? ENV_SENSOR_DEFAULTS.enabled) === true,
-      envWeatherCity: String(s.envWeatherCity ?? config.envWeatherCity ?? ENV_SENSOR_DEFAULTS.city).trim(),
-      envSensorTime: String(s.envSensorTime ?? config.envSensorTime ?? ENV_SENSOR_DEFAULTS.time).trim(),
-      envMemoryThreshold: Math.max(
-        0,
-        Math.min(
-          100,
-          Number(s.envMemoryThreshold ?? config.envMemoryThreshold ?? ENV_SENSOR_DEFAULTS.memoryThreshold) ||
-            ENV_SENSOR_DEFAULTS.memoryThreshold,
-        ),
-      ),
+
+    // 一份 contract 生成整个返回值：每个字段自己带 normalize，坏值在进入业务前收敛。
+    // 回落到 `config` 是硬要求（新模型下用户的值就在 config 里；只回落硬编码默认值
+    // 会把昵称/群白名单这类配置悄悄丢掉）。
+    //
+    // 例外（contract 里标了 compositionOnly / idleWeight 的键）：
+    //   - targetSessionId / workspaceRoot / agentPreset 有专有回落逻辑，见下；
+    //   - 4 个 idleTriggerWeight* 不单独输出，聚合到 idleWeights（旧形状，消费方在用）。
+    const entries = []
+    const idleWeights = {}
+    let idleEntry = null
+    for (const f of SETTINGS_CONTRACT) {
+      if (f.key === 'targetSessionId') {
+        // 合并包：目标会话**优先**用大肥鱼屋子里的当前 sessionId（见 resolveTargetSessionId）。
+        // 独立安装（没有 targetSessionFromFish）时行为完全不变：设置值 > config > 空。
+        entries.push([
+          'targetSessionId',
+          resolveTargetSessionId({
+            stored: s.targetSessionId,
+            configId: config.targetSessionId,
+            fishId,
+            fromFish,
+          }),
+        ])
+        continue
+      }
+      if (f.key === 'workspaceRoot') {
+        // 工作区根目录：设置页可改；留空 = 派活/看目录/发文件这些能力如实说没配。
+        entries.push([
+          'workspaceRoot',
+          String(s.workspaceRoot ?? config.workspaceRoot ?? process.env.DSH_FISH_WORKSPACE ?? '').trim(),
+        ])
+        continue
+      }
+      if (f.key === 'agentPreset') {
+        entries.push(['agentPreset', String(s.agentPreset ?? config.agentPreset ?? '').trim()])
+        // heartbeatTimeoutMs 只从 config 读（用户设置文件不能覆盖它），位置保持在
+        // agentPreset 之后 —— 与重构前的键顺序一致。
+        entries.push(['heartbeatTimeoutMs', Math.max(10000, Number(config.heartbeatTimeoutMs ?? 90000))])
+        continue
+      }
+      if (f.compositionOnly) continue
+      const raw = s[f.key] ?? config[f.key] ?? f.default
+      const value = f.normalize ? f.normalize(raw) : raw
+      if (f.idleWeight) {
+        idleWeights[f.idleWeight] = value
+        // 在 silent 的位置放 idleWeights 占位，保持旧返回值里的键顺序。
+        if (idleEntry === null) {
+          idleEntry = ['idleWeights', null]
+          entries.push(idleEntry)
+        }
+        continue
+      }
+      entries.push([f.key, value])
     }
+    if (idleEntry !== null) idleEntry[1] = normalizeIdleWeights(idleWeights)
+    return Object.fromEntries(entries)
   }
+
 
   // ── 自己那层设置（0.2.0 专用：本机 HTTP 接口 + 自己的文件）──────────────────
   //
@@ -3195,13 +3049,22 @@ export function apply(ctx, config) {
    */
   function redactSecretsForDisplay(values) {
     const out = { ...(values && typeof values === 'object' ? values : {}) }
-    if (Array.isArray(out.modelPool)) {
-      out.modelPool = out.modelPool.map((slot) => ({
-        ...(slot && typeof slot === 'object' ? slot : {}),
-        apiKey: slot?.apiKey ? '***' : '',
-      }))
+    // 哪些字段算密钥由 contract 说了算：secret: true。
+    // modelPool 的密钥在槽位的 apiKey 上（kind='modelpool' 单独处理），
+    // 其余 secret 字段整体打码。
+    for (const f of SETTINGS_CONTRACT) {
+      if (!f.secret) continue
+      if (f.kind === 'modelpool') {
+        if (Array.isArray(out[f.key])) {
+          out[f.key] = out[f.key].map((slot) => ({
+            ...(slot && typeof slot === 'object' ? slot : {}),
+            apiKey: slot?.apiKey ? '***' : '',
+          }))
+        }
+        continue
+      }
+      if (out[f.key]) out[f.key] = '***'
     }
-    if (out.pipelineWorkerKey) out.pipelineWorkerKey = '***'
     return out
   }
 

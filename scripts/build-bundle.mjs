@@ -12,8 +12,9 @@
 // factory 结束标记固定是结尾的 "  }," + "})" 两行。
 //
 // 设置字段：构建时读 qq/shared/settings-contract.js，把可序列化的字段描述
-// （key/label/kind/group/options/hint/default）生成为 const __INJECTED_CONTRACT = [...]
-// 注入到 __qqFactory 函数体最前面；浏览器半直接用它，不 import 任何东西。
+// （key/label/kind/group/hint/options/step/min/max/default/secret/check）
+// 生成为 const __INJECTED_CONTRACT = [...]，注入到 __qqFactory 函数体最前面；
+// 浏览器半直接用它，不 import 任何东西。normalize / schema 是宿主半的，不序列化。
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -52,22 +53,31 @@ export function factoryBody(src, file = '<client>') {
 
 /**
  * 浏览器半需要的字段描述：只取可序列化的部分。
- * normalize / schema / secret 是宿主半的东西，不进 bundle。
+ * normalize / schema / compositionOnly / idleWeight 是宿主半的东西，不进 bundle；
+ * check 与 secret 是纯数据，浏览器半要用，必须带上。
  */
 export async function contractFieldsForClient() {
   const { SETTINGS_CONTRACT } = await import(pathToFileURL(CONTRACT_FILE).href)
   if (!Array.isArray(SETTINGS_CONTRACT)) {
     throw new Error(`${CONTRACT_FILE}: 没有导出 SETTINGS_CONTRACT 数组`)
   }
-  return SETTINGS_CONTRACT.map(({ key, label, kind, group, options, hint, default: defaultValue }) => ({
-    key,
-    label,
-    kind,
-    group,
-    options,
-    hint,
-    default: defaultValue,
-  }))
+  return SETTINGS_CONTRACT.map((f) => {
+    const out = {
+      key: f.key,
+      label: f.label,
+      kind: f.kind,
+      group: f.group,
+      hint: f.hint,
+      default: f.default,
+    }
+    if (f.options) out.options = f.options
+    if (f.step) out.step = f.step
+    if (f.min !== undefined) out.min = f.min
+    if (f.max !== undefined) out.max = f.max
+    if (f.secret) out.secret = true
+    if (f.check) out.check = f.check
+    return out
+  })
 }
 
 /** 生成注入到 __qqFactory 函数体最前面的常量声明。 */

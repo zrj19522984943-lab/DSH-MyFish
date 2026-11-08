@@ -49,6 +49,7 @@
     "napcat.js",
     "stickers.js",
     "client",
+    "shared",
     "assets",
     "screenshots.json",
     "cordis.patch.yml",
