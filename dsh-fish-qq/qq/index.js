@@ -63,6 +63,16 @@ import {
   MIN_QQ_BUILD,
 } from './napcat.js'
 import { SETTINGS_CONTRACT } from './shared/settings-contract.js'
+import {
+  MODEL_POOL_SLOTS,
+  MODEL_POOL_TIMEOUT_MS,
+  emptyModelSlot,
+  normalizeModelPool,
+} from './shared/model-pool.js'
+
+// 模型池的 4 个符号搬到 shared/model-pool.js（浏览器半也共用同一份）；
+// 这里 re-export，保证 `import { normalizeModelPool } from '.../qq/index.js'` 的老用法不变。
+export { MODEL_POOL_SLOTS, MODEL_POOL_TIMEOUT_MS, emptyModelSlot, normalizeModelPool }
 
 export const name = 'qq-bridge'
 
@@ -124,36 +134,8 @@ export function toolRegistrationTarget(name, { hasSink = false, debugToolsInWork
 // 槽位内容存进 qq-bridge 的普通设置（key = modelPool），与卡片同一个文件；
 // fish 的 handoff.js 会读 `$DSH_HOME/qq-bridge-settings.json` 的 values.modelPool。
 
-/** 固定 3 个槽位。 */
-export const MODEL_POOL_SLOTS = 3
-/** 模型池单次网络请求的硬性上限。 */
-export const MODEL_POOL_TIMEOUT_MS = 10_000
-
-/** 一个空槽位。 */
-export function emptyModelSlot() {
-  return { enabled: false, apiUrl: '', apiKey: '', modelName: '' }
-}
-
-/**
- * 把任意输入收敛成**恰好 3 个**形状固定的槽位。
- *
- * 为什么要收敛而不是原样返回：槽位数量是界面契约（Slot 1/2/3），少一个会让
- * 卡片在数组下标上炸掉；多一个则会被静默保存成第 4 个永远看不见的槽。
- */
-export function normalizeModelPool(raw) {
-  const rows = Array.isArray(raw) ? raw : []
-  const out = []
-  for (let i = 0; i < MODEL_POOL_SLOTS; i += 1) {
-    const row = rows[i] && typeof rows[i] === 'object' ? rows[i] : {}
-    out.push({
-      enabled: row.enabled === true,
-      apiUrl: String(row.apiUrl ?? '').trim(),
-      apiKey: String(row.apiKey ?? '').trim(),
-      modelName: String(row.modelName ?? '').trim(),
-    })
-  }
-  return out
-}
+// 模型池的 3 个槽位形状（MODEL_POOL_SLOTS / MODEL_POOL_TIMEOUT_MS / emptyModelSlot /
+// normalizeModelPool）在 qq/shared/model-pool.js —— 浏览器半也要用同一份。
 
 /** 取第一个「已启用且四项都填了」的槽位；没有就返回 null。 */
 export function pickEnabledModelSlot(raw) {

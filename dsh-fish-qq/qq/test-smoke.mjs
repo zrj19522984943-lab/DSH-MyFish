@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { contractFieldsForClient } from '../../scripts/build-bundle.mjs'
+import * as modelPoolShared from './shared/model-pool.js'
 import { apply, BASE_TOOLS, buildUsagePrompt, extractQQReply, hasLegacySettings, injectedMessageSource, inlineImageNotes, labelForSegment, mapOneBotNotice, normalizeDelivery, normalizeReplyMode, NS, routeToolIntent, truncateText } from './index.js'
 import { hashOfBuffer, loadStickers, saveStickers, shortHash, upsertSticker } from './stickers.js'
 
@@ -1132,12 +1133,13 @@ function sawSentText(s) {
   {
     let def
     // 合并包的产物里，构建脚本会在 __qqFactory 函数体最前面注入
-    // `const __INJECTED_CONTRACT = [...]`；这里直接跑源文件，必须补上同一个变量，
-    // 否则卡片会少 3 个字段（replyMode / delivery / checklogNotifyMode）。
+    // `const __INJECTED_CONTRACT = [...]` 与 shared/model-pool.js 的源码；
+    // 这里直接跑源文件，必须补上同名符号，否则卡片会少字段 / 模型池归一化会抛错。
     const sandbox = {
       window: { __ModuleLoader__: { load: (d) => { def = d } } },
       console,
       __INJECTED_CONTRACT: await contractFieldsForClient(),
+      ...modelPoolShared,
     }
     vm.runInNewContext(src, sandbox)
     check('bundle 被 __ModuleLoader__ 装载', def?.id === pkg.name, String(def?.id))

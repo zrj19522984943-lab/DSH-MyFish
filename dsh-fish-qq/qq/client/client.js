@@ -56,25 +56,11 @@ window.__ModuleLoader__.load({
     // ── 模型池（2026-11-03）───────────────────────────────────────────────────
     // 固定 3 个槽位。存进设置的 `modelPool` 数组；fish 的 handoff.js 读同一个
     // qq-bridge-settings.json（values.modelPool），摘要优先用第一个启用的槽位。
-    const MODEL_SLOTS = 3
+    // 槽位形状（MODEL_POOL_SLOTS / emptyModelSlot / normalizeModelPool）来自
+    // qq/shared/model-pool.js，由 scripts/build-bundle.mjs 在构建时注入到本函数
+    // 体最前面；源文件单跑（test-smoke.mjs）时由测试沙箱提供同名符号。
     const MODEL_POOL_API = '/api/qq-bridge/fetch-models'
     const MODEL_TEST_API = '/api/qq-bridge/test-model'
-
-    /** 把任意输入收敛成恰好 3 个槽位（与宿主半 normalizeModelPool 同形）。 */
-    function normalizeModelPool(raw) {
-      const rows = Array.isArray(raw) ? raw : []
-      const out = []
-      for (let i = 0; i < MODEL_SLOTS; i += 1) {
-        const row = rows[i] && typeof rows[i] === 'object' ? rows[i] : {}
-        out.push({
-          enabled: row.enabled === true,
-          apiUrl: String(row.apiUrl ?? '').trim(),
-          apiKey: String(row.apiKey ?? '').trim(),
-          modelName: String(row.modelName ?? '').trim(),
-        })
-      }
-      return out
-    }
 
     function updateSlot(list, index, patch) {
       const next = normalizeModelPool(list)
