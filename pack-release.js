@@ -202,7 +202,6 @@ function buildSensitiveContext() {
   for (const variant of pathVariants(PROJECT_ROOT)) addExact(variant, '<RELEASE_ROOT>')
   for (const variant of pathVariants(WORKSPACE_ROOT)) addExact(variant, '<WORKSPACE>')
   for (const variant of pathVariants(HOME)) addExact(variant, '<HOME>')
-  for (const variant of pathVariants('D:\\demo')) addExact(variant, '<WORKSPACE>')
 
   const userName = path.basename(HOME)
   if (userName && userName.length >= 2) addExact(userName, '<USER>')

@@ -3214,7 +3214,7 @@ export function apply(ctx, config) {
   // 也不怕 QQ 的下载链接过期。
   //
   // 目录 = <工作区根>/receive/（ workspaceRoot 设置项 + `receive/`，即
-  // D:\demo\workspace\receive\）；命名「发送人昵称_原文件名」，重名加序号。
+  // <工作区根>\receive\）；命名「发送人昵称_原文件名」，重名加序号。
   // 下载**不看发送者身份**：文件是别人发过来的（发送人多半是普通人），攥着的
   // 那一道是 `receive` 指令的读权限（主人 / 管理员）。
 
@@ -6791,7 +6791,7 @@ export function apply(ctx, config) {
       '只有**主人**或**管理员**通过 QQ 发来的 `fileget <相对路径>` 指令、' +
       '或会话发起人在 DSH 界面里明确要求时才能用，否则会被拒绝。' +
       '注意：管理员下 fileget 时，注入的系统说明会要求改用 `qq_bridge_filesend` 把文件发给管理员自己（本工具的目标固定是主人）。' +
-      'path 是**相对工作区根目录**的路径（工作区根：D:\\demo\\workspace）；' +
+      'path 是**相对工作区根目录**的路径（工作区根见设置里的 workspaceRoot）；' +
       '路径越界（..、绝对路径跳出工作区）、文件不存在、是目录、超过 50MB 都会被拒发并返回原因。' +
       '本机不支持 upload_private_file 时自动退到 base64，回执 mode 字段标明用了哪种。' +
       '成功返回 `ok:true`，失败返回 `ok:false` 与原因。发出的文件会记进 outbox。',
@@ -6811,7 +6811,7 @@ export function apply(ctx, config) {
       '只有**主人**或**管理员**通过 QQ 发来的 `filesend <QQ号> <相对路径>` 指令、' +
       '或会话发起人在 DSH 界面里明确要求时才能用，否则会被拒绝。' +
       'targetQQ 必须是 5–12 位数字且不能是机器人自己。' +
-      'path 是**相对工作区根目录**的路径（工作区根：D:\\demo\\workspace）；' +
+      'path 是**相对工作区根目录**的路径（工作区根见设置里的 workspaceRoot）；' +
       '路径越界（..、绝对路径跳出工作区）、文件不存在、是目录、超过 50MB 都会被拒发并返回原因。' +
       '本机不支持 upload_private_file 时自动退到 base64，回执 mode 字段标明用了哪种。' +
       '成功返回 `ok:true`，失败返回 `ok:false` 与原因。发出的文件会记进 outbox。',

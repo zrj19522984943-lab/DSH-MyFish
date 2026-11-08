@@ -26,6 +26,11 @@ cyber_house/sensors/.rhythm/
 # 运行时 / 凭据
 # 节奏采集是持续追加的运行时数据；真实路径是 sensors/.rhythm/（cyber_house 下没有它）
 sensors/.rhythm/
+# 本机状态 / 日志 / 本地端口：每次运行都会变，不进公开仓库
+.run/
+sensors/status.md
+sensors/user_rhythm.md
+cyber_house/.dsh-web-url.json
 .dsh-fish/
 .dsh/
 CheckLogs/

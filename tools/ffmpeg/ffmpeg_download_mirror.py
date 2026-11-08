@@ -3,8 +3,8 @@ import urllib.request, ssl, hashlib, sys, time
 BASE = "https://registry.npmmirror.com/-/binary/ffmpeg-builds/v8.1.3/"
 TARBALL = "ffmpeg-8.1.3-win32-x64-gpl.tar.xz"
 SHAFILE = "ffmpeg-8.1.3.sha256.txt"
-DEST = r"D:\demo\workspace\ffmpeg-8.1.3-win32-x64-gpl.tar.xz"
-DEST_SHA = r"D:\demo\workspace\ffmpeg-8.1.3.sha256.txt"
+DEST = r".\ffmpeg-8.1.3-win32-x64-gpl.tar.xz"
+DEST_SHA = r".\ffmpeg-8.1.3.sha256.txt"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False

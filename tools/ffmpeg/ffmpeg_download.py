@@ -2,7 +2,7 @@ import urllib.request, ssl, hashlib, sys, time, os
 
 URL = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build.zip"
 EXPECTED_SHA256 = "759d0a9831c436a0eb331ad36f236c06cb04aaa0005da46571f0e9d3d9206f6b"
-DEST = r"D:\demo\workspace\ffmpeg-9.0.2-full_build.zip"
+DEST = r".\ffmpeg-9.0.2-full_build.zip"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False

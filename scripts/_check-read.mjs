@@ -1,7 +1,7 @@
 import { readForHer } from '../dsh-fish-qq/fish/lib/readfile.js'
 import { defaultCheckLogsDir } from '../dsh-fish-qq/fish/lib/checklog.js'
 
-const workspaceRoot = 'D:\\demo\\workspace\\DSH-MyFish'
+const workspaceRoot = process.env.DSH_FISH_WORKSPACE ?? process.cwd()
 const selfRoot = `${process.env.USERPROFILE}\\.dsh-fish`
 
 const a = readForHer({ workspaceRoot }, { path: 'README.md', offset: 1, limit: 5 })
