@@ -2131,6 +2131,75 @@ function __fishFactory(require) {
 // ─────────────────────────── QQ 桥接的设置页（原样搬运） ───────────────────────────
 function __qqFactory(require) {
 
+const __INJECTED_CONTRACT = [
+  {
+    "key": "replyMode",
+    "label": "出站方式",
+    "kind": "select",
+    "group": "outbound",
+    "options": [
+      [
+        "marker",
+        "标记块（默认）"
+      ],
+      [
+        "tool",
+        "工具调用"
+      ],
+      [
+        "always",
+        "整轮都发"
+      ]
+    ],
+    "hint": "标记块 = 只发块里的内容；工具调用 = 用 qq_bridge_send 发（每轮多一次模型调用）；整轮都发 = 技术内容也会进群，慎用。",
+    "default": "marker"
+  },
+  {
+    "key": "delivery",
+    "label": "投递方式",
+    "kind": "select",
+    "group": "wake",
+    "options": [
+      [
+        "auto",
+        "自动（忙时插话）"
+      ],
+      [
+        "followup",
+        "排队"
+      ],
+      [
+        "steer",
+        "总是插话"
+      ]
+    ],
+    "hint": "QQ 消息怎么进目标会话：自动 = 目标正忙就插话、空闲时排队；排队 = 永远排成独立一轮；总是插话 = 无论忙闲都插。",
+    "default": "auto"
+  },
+  {
+    "key": "checklogNotifyMode",
+    "label": "任务完成通知",
+    "kind": "select",
+    "group": "outbound",
+    "options": [
+      [
+        "off",
+        "关（默认）"
+      ],
+      [
+        "system",
+        "系统模板"
+      ],
+      [
+        "agent",
+        "让她自己说"
+      ]
+    ],
+    "hint": "CheckLogs/ 里写了任务完成日志后怎么通知：关 = 什么都不说；系统模板 = 插件直接发一条；让她自己说 = 投进她的会话，让她用自己的话说。",
+    "default": "off"
+  }
+]
+
     var module = { exports: {} }
     var exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
@@ -2197,7 +2266,21 @@ function __qqFactory(require) {
     // 加一个设置项 = 在这里加一行。kind: text | list | number | boolean | select；
     // group 见下面的 GROUPS —— 漏写 group 的字段**哪一组都不渲染**，界面上直接消失
     // （加载时会吼一嗓子，但界面仍然没有它，加完务必人工数一遍）。
+    //
+    // 前 3 个字段不在这里写：它们来自 qq/shared/settings-contract.js，构建时由
+    // scripts/build-bundle.mjs 序列化成 __INJECTED_CONTRACT 注入到本函数体最前面。
+    // 直接跑源文件（test-smoke.mjs）时由测试沙箱提供同名变量，行为与产物一致。
+    const CONTRACT_FIELDS = (typeof __INJECTED_CONTRACT === 'undefined' ? [] : __INJECTED_CONTRACT).map((f) => ({
+      key: f.key,
+      label: f.label,
+      kind: f.kind,
+      group: f.group,
+      options: f.options,
+      hint: f.hint,
+    }))
+
     const FIELDS = [
+      ...CONTRACT_FIELDS,
       {
         key: 'targetSessionId',
         label: '目标会话',
@@ -2248,30 +2331,6 @@ function __qqFactory(require) {
         kind: 'boolean',
         group: 'wake',
         hint: '开启后，群里没被 @ 就完全不处理（比概率唤醒更严）。',
-      },
-      {
-        key: 'replyMode',
-        label: '出站方式',
-        kind: 'select',
-        group: 'outbound',
-        options: [
-          ['marker', '标记块（默认）'],
-          ['tool', '工具调用'],
-          ['always', '整轮都发'],
-        ],
-        hint: '标记块 = 只发块里的内容；工具调用 = 关掉标记块、改用 qq_bridge_send 发送（每轮多一次模型调用，但发不出去时有明确反馈）；整轮都发 = 技术内容也会进群，慎用。',
-      },
-      {
-        key: 'delivery',
-        label: '投递方式',
-        kind: 'select',
-        group: 'wake',
-        options: [
-          ['auto', '自动（忙时插话）'],
-          ['followup', '排队'],
-          ['steer', '总是插话'],
-        ],
-        hint: 'QQ 消息怎么进目标会话：自动 = 目标正忙就插话（在下一个 step 边界塞进去）、空闲时排队；排队 = 永远排成独立一轮（更稳）；总是插话 = 无论忙闲都插。',
       },
       { key: 'replyWithQuote', label: '引用原消息', kind: 'boolean', group: 'outbound', hint: '回复时引用触发的那条消息。' },
       { key: 'stripMarkdown', label: '去掉 Markdown', kind: 'boolean', group: 'outbound', hint: '出站前去掉 Markdown 标记（QQ 不渲染）。' },
@@ -2472,18 +2531,7 @@ function __qqFactory(require) {
         hint: 'subsend 两次发送之间的最短间隔。默认 20。',
       },
       // ── 任务完成通知（CheckLogs，2026-10-28）──
-      {
-        key: 'checklogNotifyMode',
-        label: '任务完成通知',
-        kind: 'select',
-        group: 'outbound',
-        options: [
-          ['off', '关（默认）'],
-          ['system', '系统模板'],
-          ['agent', '让她自己说'],
-        ],
-        hint: '她派出去的活儿有了结果（CheckLogs/ 里写成一条日志）后怎么通知你：关 = 什么都不说；系统模板 = 插件直接发一条「[任务通知] … 完成了 / 失败了：… / 超时了」；让她自己说 = 把结果投进她的会话，由她用自己的话跟你说一句（她一个字没说就退回模板，不会静默）。',
-      },
+      // checklogNotifyMode 在 settings-contract 里（见上方 CONTRACT_FIELDS）。
       {
         key: 'checklogNotifyOnSuccess',
         label: '成功也说一声',

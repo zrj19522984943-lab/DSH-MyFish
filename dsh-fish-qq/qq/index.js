@@ -62,6 +62,7 @@ import {
   DEFAULT_ASSET,
   MIN_QQ_BUILD,
 } from './napcat.js'
+import { SETTINGS_CONTRACT } from './shared/settings-contract.js'
 
 export const name = 'qq-bridge'
 
@@ -69,6 +70,9 @@ export const inject = ['agents', 'tools', 'settings']
 
 // 导出是为了让测试能断言“浏览器半的卡片 key”与它一致 —— 不一致的话界面上会静默什么都不出现。
 export const NS = 'qq-bridge'
+
+/** 设置清单的 key → 字段。readSettings 的归一化与 knownSettingKeys 共用这一份。 */
+const CONTRACT_MAP = Object.fromEntries(SETTINGS_CONTRACT.map((f) => [f.key, f]))
 
 /**
  * 她独占的 QQ 回复工具（2026-11-08）。
@@ -2823,8 +2827,8 @@ export function apply(ctx, config) {
       replyWithQuote: (s.replyWithQuote ?? config.replyWithQuote) === true,
       atOnlyInGroup: (s.atOnlyInGroup ?? config.atOnlyInGroup) === true,
       stripMarkdown: (s.stripMarkdown ?? config.stripMarkdown) !== false,
-      replyMode: normalizeReplyMode(s.replyMode ?? config.replyMode),
-      delivery: normalizeDelivery(s.delivery ?? config.delivery),
+      replyMode: CONTRACT_MAP.replyMode.normalize(s.replyMode ?? config.replyMode),
+      delivery: CONTRACT_MAP.delivery.normalize(s.delivery ?? config.delivery),
       visionModel: String(s.visionModel ?? config.visionModel ?? '').trim(),
       agentPreset: String(s.agentPreset ?? config.agentPreset ?? '').trim(),
       heartbeatTimeoutMs: Math.max(10000, Number(config.heartbeatTimeoutMs ?? 90000)),
@@ -2888,7 +2892,7 @@ export function apply(ctx, config) {
       ),
       // checklog 通知（2026-10-28）：范围与默认值都收在这里，坏值不许穿透到发送路径。
       // ⚠️ 任务书 1 只立字段：mode='off'（默认）时后面接的逻辑必须什么都不做。
-      checklogNotifyMode: normalizeChecklogNotifyMode(s.checklogNotifyMode ?? config.checklogNotifyMode),
+      checklogNotifyMode: CONTRACT_MAP.checklogNotifyMode.normalize(s.checklogNotifyMode ?? config.checklogNotifyMode),
       checklogNotifyOnSuccess:
         (s.checklogNotifyOnSuccess ?? config.checklogNotifyOnSuccess ?? CHECKLOG_NOTIFY_DEFAULTS.onSuccess) === true,
       checklogNotifyDailyLimit: normalizeChecklogNotifyDailyLimit(
@@ -3067,7 +3071,9 @@ export function apply(ctx, config) {
   /** 只认 schema 里有的键 —— 接口不写白名单之外的任何东西。 */
   // @doc qq.settings
   function knownSettingKeys() {
-    return new Set(Object.keys(BridgeSettings?.dict ?? {}))
+    const keys = new Set(Object.keys(BridgeSettings?.dict ?? {}))
+    for (const f of SETTINGS_CONTRACT) keys.add(f.key)
+    return keys
   }
 
   function sendJson(res, status, payload) {

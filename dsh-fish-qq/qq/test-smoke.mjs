@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
+import { contractFieldsForClient } from '../../scripts/build-bundle.mjs'
 import { apply, BASE_TOOLS, buildUsagePrompt, extractQQReply, hasLegacySettings, injectedMessageSource, inlineImageNotes, labelForSegment, mapOneBotNotice, normalizeDelivery, normalizeReplyMode, NS, routeToolIntent, truncateText } from './index.js'
 import { hashOfBuffer, loadStickers, saveStickers, shortHash, upsertSticker } from './stickers.js'
 
@@ -1130,7 +1131,14 @@ function sawSentText(s) {
   // 那种失败只有把注册路径真跑一次才拦得住。
   {
     let def
-    const sandbox = { window: { __ModuleLoader__: { load: (d) => { def = d } } }, console }
+    // 合并包的产物里，构建脚本会在 __qqFactory 函数体最前面注入
+    // `const __INJECTED_CONTRACT = [...]`；这里直接跑源文件，必须补上同一个变量，
+    // 否则卡片会少 3 个字段（replyMode / delivery / checklogNotifyMode）。
+    const sandbox = {
+      window: { __ModuleLoader__: { load: (d) => { def = d } } },
+      console,
+      __INJECTED_CONTRACT: await contractFieldsForClient(),
+    }
     vm.runInNewContext(src, sandbox)
     check('bundle 被 __ModuleLoader__ 装载', def?.id === pkg.name, String(def?.id))
 
