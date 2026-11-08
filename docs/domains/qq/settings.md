@@ -14,14 +14,16 @@ anchors: dsh-fish-qq/qq/index.js#Config; dsh-fish-qq/qq/index.js#BridgeSettings;
 
 | schema | 键数 | 用途 |
 | --- | --- | --- |
-| `Config` | **54** | composition / bundle 层默认值；由 `cordis.patch.yml` 的 `qq:` 槽提供。含 `statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset` 等「装配/传输」键。 |
-| `BridgeSettings` | **55** | 用户可写的设置卡片 schema；`knownSettingKeys()` 直接取 `BridgeSettings.dict`，设置接口只允许写这 55 个键。 |
+| `Config` | **60** | composition / bundle 层默认值；由 `cordis.patch.yml` 的 `qq:` 槽提供。= contract 生成的全部用户设置（55）+ 5 个装配键：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`。 |
+| `BridgeSettings` | **55** | 用户可写的设置卡片 schema；= contract 生成的 52 项 + 手写的 3 个 composition-only 键（`targetSessionId` / `workspaceRoot` / `agentPreset`）。`knownSettingKeys()` 取 `BridgeSettings.dict` ∪ contract。 |
 
-两个 schema 的交集是 49 个键。`Config` 独有 5 个：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`；`BridgeSettings` 独有 6 个：`attachRecentChat`、`recentChatLimit`、`replyMaxChars`、`rssFeeds`、`pipelineWorkerApi`、`pipelineWorkerKey`。
+两个 schema 的交集是 55 个键。`Config` 独有 5 个：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`；`BridgeSettings` 没有独有的键。
+
+两个 schema 都由 `qq/shared/settings-contract.js` 生成（`buildSchemaFromContract()`）：改类型/默认值/描述只改 contract。`targetSessionId` / `workspaceRoot` / `agentPreset` 标了 `compositionOnly: true`，Schema 与 `readSettings` 循环都跳过它们，仍由 `index.js` 手写（跟鱼屋、读环境变量、透传 resume）。
 
 ### 55 项用户设置（`BridgeSettings`）
 
-下表按 `BridgeSettings` 的声明顺序列出全部 55 项。默认值取自 schema 的 `.default(...)`；常量（`PROACTIVE_DEFAULTS` / `IDLE_TRIGGER_DEFAULTS` / `SUBSEND_DEFAULTS` / `CHECKLOG_NOTIFY_DEFAULTS` / `ENV_SENSOR_DEFAULTS`）展开成实际值。
+下表按 `settings-contract` 的声明顺序列出全部 55 项。默认值取自字段的 `default`；常量（`PROACTIVE_DEFAULTS` / `IDLE_TRIGGER_DEFAULTS` / `SUBSEND_DEFAULTS` / `CHECKLOG_NOTIFY_DEFAULTS` / `ENV_SENSOR_DEFAULTS`）展开成实际值。
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
@@ -87,7 +89,7 @@ anchors: dsh-fish-qq/qq/index.js#Config; dsh-fish-qq/qq/index.js#BridgeSettings;
 
 1. **0.1.5 老宿主**：`ctx.settings.get('qq-bridge')`（settings 命名空间）优先；取不到回落到 `config`。
 2. **0.2.x 宿主**：`$DSH_HOME/qq-bridge-settings.json`（或 `statePath` 同目录）里的 `values` 优先；没有该文件 / 文件坏了都当「没有覆盖」，回落到 `config`。
-3. 每个键最后再回落到 `Config` schema 的默认值或硬编码默认值；`readSettings()` 逐项做归一化与 clamp（概率 0–1、端口 1–65535、`ownerQQ` 只留数字等）。
+3. 每个键最后再回落到 contract 字段的 `default`（`Config` 由 contract 生成）；`readSettings()` 用字段自带的 `normalize` 逐项收敛（概率 0–1、端口 1–65535、`ownerQQ` 只留数字等）。
 
 读取实现：
 
@@ -108,7 +110,7 @@ anchors: dsh-fish-qq/qq/index.js#Config; dsh-fish-qq/qq/index.js#BridgeSettings;
 
 ### 已知偏差
 
-- **「55 项」的口径**：`dsh-fish-qq/对接文档.md` §4.4 标题写「qq 设置（55 项）」，表里也正好 55 行；代码里 `BridgeSettings` 是 55 个键，而 acceptance 文字里的 `Config` 只有 54 个键。差异 = `Config` 独有的 5 个装配键（`statePath` / `debugTools` / `debugToolsInWorkspace` / `heartbeatTimeoutMs` / `napcatAsset`）不在用户设置表里，`BridgeSettings` 独有的 6 个（`attachRecentChat` / `recentChatLimit` / `replyMaxChars` / `rssFeeds` / `pipelineWorkerApi` / `pipelineWorkerKey`）不在 `Config` 里。**55 行表对应的是 `BridgeSettings`，不是 `Config`。**
+- **「55 项」的口径**：`dsh-fish-qq/对接文档.md` §4.4 标题写「qq 设置（55 项）」，表里也正好 55 行；代码里 `BridgeSettings` 是 55 个键，`Config` 是 60 个键。差异 = `Config` 独有的 5 个装配键（`statePath` / `debugTools` / `debugToolsInWorkspace` / `heartbeatTimeoutMs` / `napcatAsset`）不在用户设置表里；`BridgeSettings` 没有独有的键（6 个从前的独有键现在也由 contract 生成进 `Config`）。**55 行表对应的是 `BridgeSettings` / `settings-contract`，不是 `Config`。**
 - **昵称默认值**：`BridgeSettings` 是 `['244']`，但 `dsh-fish-qq/cordis.patch.yml` 的 qq 槽写的是 `['244', '小助手']`。合并包安装后的实际生效默认值是两项（patch 是 composition base，见 `merge.patch`）。
 - **`modelPool` 的「3 槽」**：schema 默认是 `[]`；`readSettings()` 调 `normalizeModelPool()` 后固定成 3 个槽（空的也占位）。文档写「3 个固定槽位」描述的是归一化后的形状，不是 schema 默认值。
 - **`napcatAsset`**：`Config` 里有 `napcatAsset`（默认 `DEFAULT_ASSET`），55 项用户设置和设置卡片都没有这一项；它是 composition/安装器参数。
@@ -134,8 +136,8 @@ cd dsh-fish-qq/qq
 node test-smoke.mjs
 ```
 
-另外核对键数（应输出 `Config 54 / BridgeSettings 55`）：
+另外核对键数（应输出 `Config 60 / contract 55`）：
 
 ```powershell
-node -e 'const fs=require("fs");const s=fs.readFileSync("dsh-fish-qq/qq/index.js","utf8");const n=(name)=>{const m=s.match(new RegExp("const "+name+" = Schema\\.object\\(\\{([\\s\\S]*?)\\n\\}\\)"));return [...m[1].matchAll(/^  (\w+):/gm)].length};console.log("Config",n("Config"),"/ BridgeSettings",n("BridgeSettings"))'
+node --input-type=module -e "const m=await import('./dsh-fish-qq/qq/index.js');const c=await import('./dsh-fish-qq/qq/shared/settings-contract.js');console.log('Config',Object.keys(m.Config.dict).length,'/ contract',c.SETTINGS_CONTRACT.length)"
 ```
