@@ -1,4 +1,5 @@
 // qq/shared/render-text.js
+// @doc qq.outbound
 //
 // 桥接层自己拼的文本：指令回执（help / whitelist / admin / subsend / file）、
 // 入站占位符回填（图片 / 表情包 / 文件）、收件箱与 list 报表、时间/文件名小工具。

@@ -55,6 +55,7 @@ anchors: <仓库相对路径>[#<符号或行号>]; <仓库相对路径>[#<符号
 | 装纯净版 / 换一台机器 | `ops.install` → `ops.config-write` → `ops.acceptance` |
 | 接 QQ / 私聊没反应 | `qq.onebot` → `qq.wake` → `qq.whitelist` → `qq.owner` |
 | 改唤醒策略、概率、群聊 @ | `qq.wake` → `qq.settings` → `qq.proactive` / `qq.idle` |
+| 加/改设置项 | `qq.settings` → `qq.client-card` → `contract-lint`（`cd dsh-fish-qq/qq && npm run lint`） |
 | 回复发不出去 / 出站方式不对 | `qq.outbound` → `qq.fileget` → `qq.safety` |
 | 加改 QQ 指令词 | `qq.subsend` → `qq.fileget` → `qq.receive` → `qq.list` → `qq.help` → `qq.whitelist` → `qq.admin` |
 | 主动私聊 / 私人时间 | `qq.proactive` → `qq.idle` → `qq.settings` |

@@ -1,4 +1,5 @@
 // qq/shared/settings-contract.js
+// @doc qq.settings
 //
 // QQ 桥接设置的**唯一清单**。一份数据生成三处：
 //   - 宿主半 qq/index.js：Config / BridgeSettings 的 Schema、readSettings() 的归一化、

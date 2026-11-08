@@ -2173,6 +2173,7 @@ function normalizeModelPool(raw) {
 }
 
 // qq/shared/protocol.js
+// @doc qq.settings
 //
 // 设置接口 `/api/qq-bridge/settings` 的**请求 / 响应形状**：
 //   - 宿主半 handleSettingsRequest 用 validatePatch() 解 POST 体；

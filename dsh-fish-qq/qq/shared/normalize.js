@@ -1,4 +1,5 @@
 // qq/shared/normalize.js
+// @doc qq.outbound
 //
 // 归一化 / 格式化小工具（宿主专属；client 不用，所以不参与构建注入）。
 // 纯函数，不 import 任何东西、不引用宿主对象。

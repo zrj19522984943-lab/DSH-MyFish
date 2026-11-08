@@ -1,4 +1,5 @@
 // qq/shared/parse-commands.js
+// @doc qq.safety
 //
 // 指令解析的纯函数 + 指令词常量（宿主专属；client 不用）。
 // 判据全部在这里：前缀必须锚定开头、QQ 号 5–12 位、整条消息形状匹配；

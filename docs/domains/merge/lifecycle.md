@@ -9,6 +9,7 @@ anchors: dsh-fish-qq/index.js
 ## 事实
 
 - `dsh-fish-qq/index.js` 导出 `name='dsh-fish-qq'`、`VERSION='1.4.0'`（**与 package.json 不一致，当前版本见 [merge.version-matrix](version-matrix.md)**）、`inject`（fish + qq 并集）、`apply(ctx, config)`。
+- 浏览器半 `client.js` 由 `scripts/build-bundle.mjs` 生成；跨端纯函数（settings contract / model-pool / protocol）由构建注入到 `__qqFactory`，宿主专属纯函数在 `qq/shared/`，client 不 import（bundle 是 classic script）。
 - `config` 分两槽：`config.fish` 原样给 fish，`config.qq` 原样给 qq；两边互不串味。
 - 启动顺序：**先 fish、再 qq**。fish 先建屋子（工作区 + 会话）；qq 的 `targetSessionId` 留空时读 `~/.dsh-fish/home.json` 拿会话 id，顺序反了第一次会读不到（有兜底）。
 - 工具共享：`const herToolDefs = []` 同时传给 fish 的 `toolSink` 与 qq 的 `toolSink`；两边的她的工具都收进同一数组，由 fish 的 `agent/created` 挂进她的 own 层；QQ 管理/调试工具仍 global。

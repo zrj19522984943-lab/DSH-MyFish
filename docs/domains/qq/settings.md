@@ -14,7 +14,7 @@ anchors: dsh-fish-qq/qq/index.js#Config; dsh-fish-qq/qq/index.js#BridgeSettings;
 
 | schema | 键数 | 用途 |
 | --- | --- | --- |
-| `Config` | **60** | composition / bundle 层默认值；由 `cordis.patch.yml` 的 `qq:` 槽提供。= contract 生成的全部用户设置（55）+ 5 个装配键：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`。 |
+| `Config` | **60** | composition / bundle 层默认值；由 `cordis.patch.yml` 的 `qq:` 槽提供。= contract 的全部 55 个键（52 个由 `buildSchemaFromContract()` 生成 + 3 个 composition-only 手写）+ 5 个装配键：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`。 |
 | `BridgeSettings` | **55** | 用户可写的设置卡片 schema；= contract 生成的 52 项 + 手写的 3 个 composition-only 键（`targetSessionId` / `workspaceRoot` / `agentPreset`）。`knownSettingKeys()` 取 `BridgeSettings.dict` ∪ contract。 |
 
 两个 schema 的交集是 55 个键。`Config` 独有 5 个：`statePath`、`debugTools`、`debugToolsInWorkspace`、`heartbeatTimeoutMs`、`napcatAsset`；`BridgeSettings` 没有独有的键。

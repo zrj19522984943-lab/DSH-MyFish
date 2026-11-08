@@ -1,4 +1,5 @@
 // qq/shared/intent.js
+// @doc fish.tools
 //
 // 工具面与意图路由：BASE_TOOLS / EXT_TOOLS / TOOL_INTENTS / routeToolIntent，
 // 以及“某个工具该注册到哪儿”的 toolRegistrationTarget。

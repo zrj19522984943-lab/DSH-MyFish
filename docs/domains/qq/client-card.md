@@ -12,7 +12,7 @@ anchors: dsh-fish-qq/qq/client/client.js
 - 模块 id 必须是宿主包名（合并包 `dsh-fish-qq`，独立安装 `dsh-qq-bridge`）；`__ModuleLoader__.load({ id, factory })` 包装；导出 `name` = 包名。
 - 挂载点：兼容 `settings.plugin.item`（0.1.5）与 `settings.plugins.tab`（0.2.0），两个 slot 各注册一次，哪个存在哪个生效。
 - 设置 key 必须逐字等于 `qq-bridge`；0.2.0 走本机 `/api/qq-bridge/settings`（GET/POST），0.1.5 走 `settings` 命名空间。
-- 卡片按手风琴分组：核心与权限 / QQ 唤醒与投递 / 出站与功能 / 私人时间与主动 / 底层基础设施 / 情报流水线 / 环境传感器；字段与 55 项 `BridgeSettings` 对齐（`qq.settings`）。
+- 卡片按手风琴分组：核心与权限 / QQ 唤醒与投递 / 出站与功能 / 私人时间与主动 / 底层基础设施 / 情报流水线 / 环境传感器。**字段不手写**：`FIELDS` 完全来自 `qq/shared/settings-contract.js`（构建时序列化成 `__INJECTED_CONTRACT` 注入）；`GROUPS` 按 contract 的 `group` 去重、顺序固定 8 组。55 项与 `BridgeSettings` 对齐（`qq.settings`）。
 - 数据源：`settings.section` 或本机接口；GET 返回 `{values, overridden}`，POST `{set, unset}`；「撤销覆盖」发 `unset`。
 - 目标会话是下拉选择（会话标题/项目名），归档会话不列出，当前选中的例外标「已归档」；不在列表里的保留兜底项。
 - 没有可写设置服务时如实显示 unavailable，不静默消失；修改 `client/` 后必须重启 `dsh web` 并刷新页面（bundle 不是热更新）。

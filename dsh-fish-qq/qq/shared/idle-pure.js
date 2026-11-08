@@ -1,4 +1,6 @@
 // qq/shared/idle-pure.js
+// @doc qq.proactive
+// @doc qq.idle
 //
 // 主动私聊 / subsend / Cron 的纯判据与默认值。
 // 宿主专属（client 不用）；私人时间的抽签判据仍在 idle-trigger.js。

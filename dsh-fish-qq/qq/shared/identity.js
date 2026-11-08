@@ -1,4 +1,5 @@
 // qq/shared/identity.js
+// @doc qq.owner
 //
 // 发送者身份档（主人 / 管理员 / 其他人）与来源标记。
 // 纯函数，不引用宿主对象；render-text.js 与 index.js 共用同一套口径。
