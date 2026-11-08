@@ -1036,10 +1036,11 @@ window.__ModuleLoader__.load({
         }
       }
       const accept = (body) => {
-        const overridden = Array.isArray(body?.overridden) ? body.overridden : []
+        // 请求/响应形状在 qq/shared/protocol.js（构建时注入，宿主半也共用同一套）。
+        const { values, overridden } = parseSettingsGetResponse(body)
         publish({
           status: 'ready',
-          value: body?.values && typeof body.values === 'object' ? body.values : {},
+          value: values,
           user: Object.fromEntries(overridden.map((key) => [key, true])),
           writable: true,
         })
@@ -1075,7 +1076,7 @@ window.__ModuleLoader__.load({
           const res = await fetch(API_PATH, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ set: { [field]: value } }),
+            body: JSON.stringify(buildSettingsSetBody(field, value)),
           })
           const body = await res.json().catch(() => ({}))
           if (!res.ok || body?.ok !== true) throw new Error(body?.error || `HTTP ${res.status}`)
@@ -1087,7 +1088,7 @@ window.__ModuleLoader__.load({
           const res = await fetch(API_PATH, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ unset: [field] }),
+            body: JSON.stringify(buildSettingsUnsetBody(field)),
           })
           const body = await res.json().catch(() => ({}))
           if (!res.ok || body?.ok !== true) throw new Error(body?.error || `HTTP ${res.status}`)

@@ -253,6 +253,8 @@ export {
   shouldSubsend,
 }
 
+import { validatePatch } from './shared/protocol.js'
+
 export const name = 'qq-bridge'
 
 export const inject = ['agents', 'tools', 'settings']
@@ -2111,13 +2113,9 @@ export function apply(ctx, config) {
         error: `请求体不是合法 JSON（${error?.message ?? error}）。请检查请求体后重发。`,
       })
     }
-    const patch = payload?.set && typeof payload.set === 'object' ? payload.set : null
-    const unset = Array.isArray(payload?.unset) ? payload.unset.map(String) : []
-    if (!patch && unset.length === 0) {
-      return sendJson(res, 400, {
-        ok: false,
-        error: '请求里缺少 set 或 unset 字段。请给出 set（要改的键值）或 unset（要清掉的键）。',
-      })
+    const { patch, unset, error: patchError } = validatePatch(payload)
+    if (patchError !== null) {
+      return sendJson(res, 400, { ok: false, error: patchError })
     }
 
     const known = knownSettingKeys()

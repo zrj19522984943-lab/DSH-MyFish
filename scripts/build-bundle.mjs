@@ -25,6 +25,7 @@ const PKG_DIR = join(ROOT, 'dsh-fish-qq')
 const OUT_FILE = join(PKG_DIR, 'client.js')
 const CONTRACT_FILE = join(PKG_DIR, 'qq', 'shared', 'settings-contract.js')
 const MODEL_POOL_FILE = join(PKG_DIR, 'qq', 'shared', 'model-pool.js')
+const PROTOCOL_FILE = join(PKG_DIR, 'qq', 'shared', 'protocol.js')
 
 const HEADER = "/**\n * dsh-fish-qq —— 浏览器半（一个 bundle 里同时装两边的设置页）\n *\n * 这个文件是**生成的**（见仓库根的 build-bundle.mjs）。别手改：\n * 改 fish/lib/client.js 或 qq/client/client.js，再重新构建。\n *\n * 为什么不是两个文件：DSH 一个包只有一个客户端入口，而且 bundle 的注册 id\n * 必须等于包名。所以这里把两边各自的 factory 拆成普通函数，\n * 再用**一个** load({ id: 'dsh-fish-qq' }) 装起来，由外层 apply 分发给两边的插件。\n */\nwindow.__ModuleLoader__.load({\n  id: 'dsh-fish-qq',\n  factory: (require) => {\n    // 告诉 QQ 半边「宿主给这个插件登记的 entry id」。\n    // 0.2.0 的插件配置页按 entry id 派发卡片，而 QQ 半边自己的 settings 命名空间还是\n    // qq-bridge；合并之后 entry id 变成 dsh-fish-qq，不说这一句它会按旧键注册\n    // → 设置页里一张卡片都不出现（2026-10-26 真机）。独立安装时这个全局不存在，\n    // QQ 半边回落成自己的命名空间，行为不变。\n    try { globalThis.__DSH_QQ_BRIDGE_HOST_ID__ = 'dsh-fish-qq' } catch { /* 非浏览器环境忽略 */ }\n\n    const fish = __fishFactory(require)\n    const qq = __qqFactory(require)\n\n    // 两边的 Cordis 插件形状合并：apply 依次调，inject 取并集。\n    // config 用 { fish: {...}, qq: {...} } 分槽，避免两个插件的键互相覆盖\n    // （比如 fish 的 root 和 qq 的 targetSessionId 都想要“顶层同名”这种位置）。\n    const inject = [...new Set([...(fish.inject ?? []), ...(qq.inject ?? [])])]\n\n    function apply(ctx, config) {\n      fish.apply?.(ctx, config?.fish)\n      qq.apply?.(ctx, config?.qq)\n    }\n\n    return { name: 'dsh-fish-qq', inject, apply }\n  },\n})\n\n// ─────────────────────────── 大肥鱼的设置页（原样搬运） ───────────────────────────\n"
 
@@ -104,6 +105,7 @@ export async function buildBundle() {
   const qq = factoryBody(readFileSync(join(PKG_DIR, 'qq/client/client.js'), 'utf8'), 'qq/client/client.js')
   const contract = await contractFieldsForClient()
   const modelPool = sharedModuleForClient(MODEL_POOL_FILE)
+  const protocol = sharedModuleForClient(PROTOCOL_FILE)
   return (
     HEADER +
     'function __fishFactory(require) {\n\n' +
@@ -112,6 +114,8 @@ export async function buildBundle() {
     SEPARATOR_QQ +
     'function __qqFactory(require) {\n\n' +
     modelPool +
+    '\n' +
+    protocol +
     '\n' +
     injectedContractLiteral(contract) +
     qq +

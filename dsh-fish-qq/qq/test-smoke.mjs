@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { contractFieldsForClient } from '../../scripts/build-bundle.mjs'
 import * as modelPoolShared from './shared/model-pool.js'
+import * as protocolShared from './shared/protocol.js'
 import { apply, BASE_TOOLS, buildUsagePrompt, extractQQReply, hasLegacySettings, injectedMessageSource, inlineImageNotes, labelForSegment, mapOneBotNotice, normalizeDelivery, normalizeReplyMode, NS, routeToolIntent, truncateText } from './index.js'
 import { hashOfBuffer, loadStickers, saveStickers, shortHash, upsertSticker } from './stickers.js'
 
@@ -1125,7 +1126,11 @@ function sawSentText(s) {
   // M1：卡片要能**撤销文件里的覆盖** —— 只有 set 时，用户从配置页改的值会被设置文件盖住。
   check('M1：卡片有「撤销覆盖」入口', src.includes('撤销覆盖'))
   check('M1：卡片的设置源暴露 unset（本机接口与设置域两条路）', src.includes('unset: async (field)') && src.includes('unset: (field)'))
-  check('M1：撤销覆盖的请求体走设置接口的 unset', src.includes('{ unset: [field] }'))
+  check(
+    'M1：撤销覆盖的请求体走设置接口的 unset',
+    src.includes('buildSettingsUnsetBody(field)') &&
+      JSON.stringify(protocolShared.buildSettingsUnsetBody('field')) === '{"unset":["field"]}',
+  )
 
   // 真把 bundle 跑一遍：假 window.__ModuleLoader__ + 假 react + 假 ctx。
   // 比字符串匹配强得多 —— key 写错在真机上是“不报错、界面静默空白”，
@@ -1140,6 +1145,7 @@ function sawSentText(s) {
       console,
       __INJECTED_CONTRACT: await contractFieldsForClient(),
       ...modelPoolShared,
+      ...protocolShared,
     }
     vm.runInNewContext(src, sandbox)
     check('bundle 被 __ModuleLoader__ 装载', def?.id === pkg.name, String(def?.id))
